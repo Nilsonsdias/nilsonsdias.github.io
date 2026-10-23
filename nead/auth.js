@@ -1,3 +1,9 @@
+export function applicationUrl(config,origin){
+ const base=new URL(origin),target=new URL(config.basePath||'/',base);
+ if(target.origin!==base.origin||target.search||target.hash)throw Error('Caminho da aplicação inválido.');
+ if(!target.pathname.endsWith('/'))target.pathname+='/';
+ return target.href;
+}
 // Autenticação confirma a identidade; nead_meu_acesso decide a autorização.
 export async function prepareGoogleLogin(client, config, origin, request = fetch) {
   let response;
@@ -12,7 +18,7 @@ export async function prepareGoogleLogin(client, config, origin, request = fetch
   const { data, error } = await client.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: new URL('/', origin).href,
+      redirectTo: applicationUrl(config,origin),
       scopes: 'openid email profile',
       queryParams: { prompt: 'select_account' },
       skipBrowserRedirect: true

@@ -11,3 +11,7 @@ O administrador pode pré-cadastrar e-mails, perfis e permissões em Administra�
 ## Ajustes de homologação — 23/10/2026
 
 Interface com login Google exclusivo, autoedição administrativa protegida, importações dentro dos cadastros e grade horizontal de processos. Código privado 98f6b751e3cc0853660409da0756ee72473aa930. 149 verificações e CI aprovados.
+
+## Endereço atual
+
+https://nilsonsdias.github.io/nead/. Arquivos da aplicação em nead/; raiz contém somente encaminhamento compatível com retornos OAuth antigos. Fonte privada 7bba9189e3ecb0944f620156a838397f7aa97a1d.

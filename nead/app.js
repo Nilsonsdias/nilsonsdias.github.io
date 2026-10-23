@@ -2,7 +2,7 @@ import {navigationGroups} from './nead-logic.js';
 import {installNead,modules,roles} from './nead.js';
 import { createClient } from './vendor/supabase.js';
 import { config } from './config.js';
-import {prepareGoogleLogin,oauthCallbackError,clearOAuthErrorUrl} from './auth.js';
+import {applicationUrl,prepareGoogleLogin,oauthCallbackError,clearOAuthErrorUrl} from './auth.js';
 const loginCallbackMessage=oauthCallbackError(window.location.href);
 import { escapeHtml as esc,formatDate,numberLabel,filterRecords,editable,savePayload,errorMessage,statusLabel } from './model.js';
 
@@ -112,7 +112,7 @@ app.addEventListener('submit',async event=>{
   const submit=form.querySelector('[type="submit"]');submit.disabled=true;submit.textContent=mode==='signup'?'Preparando cadastro…':'Entrando…';
   try{
     if(mode==='signup'){
-      const {error}=await client.auth.signUp({email,password,options:{emailRedirectTo:window.location.origin+'/'} });if(error)throw error;
+      const {error}=await client.auth.signUp({email,password,options:{emailRedirectTo:applicationUrl(config,window.location.origin)} });if(error)throw error;
       authMessage('Confira seu e-mail e abra o link de confirmação neste mesmo navegador. Depois, volte a esta página e use “Entrar”.');form.reset();
     }else{
       const {error}=await client.auth.signInWithPassword({email,password});if(error)throw error;await bootIdentity();
