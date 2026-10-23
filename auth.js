@@ -7,7 +7,7 @@ export async function prepareGoogleLogin(client, config, origin, request = fetch
   if (!response.ok) throw new Error('Não foi possível consultar o login Google. Tente novamente.');
   const settings = await response.json();
   if (settings.external?.google !== true) {
-    throw new Error('O login Google ainda está sendo configurado. Use e-mail e senha enquanto a equipe conclui a ativação.');
+    throw new Error('O login Google ainda está sendo configurado. Solicite orientação à administração do NEAD.');
   }
   const { data, error } = await client.auth.signInWithOAuth({
     provider: 'google',
@@ -33,7 +33,7 @@ export function oauthCallbackError(href) {
   if (!error && !url.searchParams.has('error_code') && !hash.has('error_code')) return null;
   return error === 'access_denied'
     ? 'O acesso pelo Google foi cancelado ou recusado. Você pode tentar novamente e escolher sua conta autorizada.'
-    : 'Não foi possível concluir o login Google. Tente novamente ou use e-mail e senha.';
+    : 'Não foi possível concluir o login Google. Tente novamente.';
 }
 
 export function clearOAuthErrorUrl(href) {
