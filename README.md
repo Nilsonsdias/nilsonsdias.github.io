@@ -15,3 +15,7 @@ Interface com login Google exclusivo, autoedição administrativa protegida, imp
 ## Endereço atual
 
 https://nilsonsdias.github.io/nead/. Arquivos da aplicação em nead/; raiz contém somente encaminhamento compatível com retornos OAuth antigos. Fonte privada 7bba9189e3ecb0944f620156a838397f7aa97a1d.
+
+## Modelos de importação — 26/10/2026
+
+Modelos XLSX públicos sem dados pessoais em nead/modelos, disponíveis nas telas de importação de Pessoas e Ofertas. Fonte 195d1002f4b7643b4a72deb76e0630d1e69440a6. CI aprovado em 154 verificações. Ativação da integração institucional é uma etapa separada de servidor.
