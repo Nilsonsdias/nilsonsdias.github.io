@@ -41,3 +41,5 @@
 .process-sheet input[type=date]{width:140px}.process-sheet input[type=time]{width:100px}
 .process-sheet .sheet-offer{min-width:230px;max-width:300px;white-space:normal}
 .process-sheet .grade-row{display:none}.process-sheet td:focus-within{background:#eef7ff;box-shadow:inset 0 0 0 1px #2175b4}
+
+.multi-filter-control .start-date-menu{width:100%;max-width:190px}.multi-filter-menu summary{overflow-wrap:anywhere}.multi-filter-menu .start-date-options{min-width:220px;max-width:calc(100vw - 48px)}.multi-filter-menu .start-date-option span{overflow-wrap:anywhere}.list-toolbar>.multi-filter-control{min-width:180px}

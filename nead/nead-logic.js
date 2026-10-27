@@ -1,4 +1,5 @@
-import {normalize} from './model.js';
+import {normalize} from './model.js?v=20261027-filtros-2';
+import {selectionValues} from './filter-selection.js';
 
 export const stages={producao:'Produção',conferencia:'Conferência',alinhamento:'Alinhamento',revisao:'Revisão',integracao:'Integração de notas'};
 export const completed=p=>['concluida','realizado'].includes(p?.status);
@@ -11,7 +12,8 @@ export function nextAction(offer){
 export function mediatorIds(offer,stage=''){
  const allocated=(offer.participantes||[]).filter(p=>p.papel==='mediador').map(p=>p.id);
  const review=offer.processos?.find(p=>p.tipo==='revisao')?.dados?.tutor_revisao_id;
- return stage==='revisao'?(review?[review]:[]):stage?allocated:[...new Set([...allocated,...(review?[review]:[])])];
+ const stages=selectionValues(stage),includeAllocated=!stages.length||stages.some(s=>s!=='revisao'),includeReview=!stages.length||stages.includes('revisao');
+ return [...new Set([...(includeAllocated?allocated:[]),...(includeReview&&review?[review]:[])])];
 }
 export function emailStatus(meeting){
  if(meeting.legado_preservado)return 'Histórico preservado';
@@ -20,15 +22,15 @@ export function emailStatus(meeting){
  return latest?.status==='concluida'?'Enviado':latest?.status==='erro'?'Erro':'Pendente';
 }
 export function filterRows(rows,search='',filters={}){
- return rows.filter(r=>normalize([r.codigo_legado,r.curso,r.turma,r.matriz,r.disciplina,r.nome_completo,r.email,r.cpf,...(r.contexto?.ofertas||[]).map(o=>o.curso+' '+o.turma)].join(' ')).includes(normalize(search))&&Object.entries(filters).every(([k,v])=>{
-  if(!v||Array.isArray(v)&&!v.length)return true;
-  if(k==='inicio')return v.includes(r.inicio);
-  if(k==='etapa')return true;
-  if(k==='mediador')return v==='__sem_mediador__'?!(r.participantes||[]).some(p=>p.papel==='mediador'):mediatorIds(r,filters.etapa).includes(v);
-  if(k==='docente')return r.participantes?.some(p=>p.papel==='docente'&&p.id===v);
-  if(k==='situacao')return r.processos?.some(p=>(!filters.etapa||p.tipo===filters.etapa)&&p.status===v);
-  if(k==='email')return emailStatus(r)===v;
-  return String(r[k]??'')===v;
+ const stages=selectionValues(filters.etapa);
+ return rows.filter(r=>normalize([r.codigo_legado,r.curso,r.turma,r.matriz,r.disciplina,r.nome_completo,r.email,r.cpf,...(r.contexto?.ofertas||[]).map(o=>o.curso+' '+o.turma)].join(' ')).includes(normalize(search))&&Object.entries(filters).every(([key,selected])=>{
+  const values=selectionValues(selected);if(!values.length)return true;
+  if(key==='etapa')return true;
+  if(key==='mediador')return values.some(value=>value==='__sem_mediador__'?!(r.participantes||[]).some(p=>p.papel==='mediador'):mediatorIds(r,stages).includes(value));
+  if(key==='docente')return r.participantes?.some(p=>p.papel==='docente'&&values.includes(p.id));
+  if(key==='situacao')return r.processos?.some(p=>(!stages.length||stages.includes(p.tipo))&&values.includes(p.status));
+  if(key==='email')return values.includes(emailStatus(r));
+  return values.includes(String(r[key]??''));
  }));
 }
 

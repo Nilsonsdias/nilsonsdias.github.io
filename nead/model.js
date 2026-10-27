@@ -1,8 +1,9 @@
+import {selectionValues} from './filter-selection.js';
 export function escapeHtml(value='') { return String(value??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x])); }
 export function formatDate(value) { if(!value)return '—';const match=String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);return match?`${match[3]}/${match[2]}/${match[1]}`:'—'; }
 export function numberLabel(value) { return String(value??'').padStart(4,'0'); }
 export function normalize(value='') {return String(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR');}
-export function filterRecords(records,query='',status='',type='') {const q=normalize(query.trim());return records.filter(a=>(!status||a.status===status)&&(!type||a.tipo===type)&&(!q||normalize([a.numero,a.disciplina,...(a.contexto?.ofertas||[]).map(o=>`${o.curso} ${o.turma}`)].join(' ')).includes(q)));}
+export function filterRecords(records,query='',status='',type='') {const q=normalize(query.trim());return records.filter(a=>(!selectionValues(status).length||selectionValues(status).includes(a.status))&&(!type||a.tipo===type)&&(!q||normalize([a.numero,a.disciplina,...(a.contexto?.ofertas||[]).map(o=>`${o.curso} ${o.turma}`)].join(' ')).includes(q)));}
 export function editable(record,profile) {return Boolean(profile?.pode_editar&&record?.tipo==='digital'&&record.status==='rascunho');}
 export function savePayload(record,text,finalize=false) {return {p_ata:record.id,p_revisao:record.revisao,p_texto:text,p_fonte_ia:null,p_finalizar:finalize};}
 export function errorMessage(error) {

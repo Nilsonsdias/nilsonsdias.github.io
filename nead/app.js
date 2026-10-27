@@ -1,10 +1,11 @@
-import {navigationGroups} from './nead-logic.js';
-import {installNead,modules,roles} from './nead.js?v=20261027-ajustes-1';
+import {renderMultiFilter,readMultiFilter} from './multi-filter.js';
+import {navigationGroups} from './nead-logic.js?v=20261027-filtros-2';
+import {installNead,modules,roles} from './nead.js?v=20261027-filtros-2';
 import { createClient } from './vendor/supabase.js';
 import { config } from './config.js';
 import {applicationUrl,prepareGoogleLogin,oauthCallbackError,clearOAuthErrorUrl} from './auth.js';
 const loginCallbackMessage=oauthCallbackError(window.location.href);
-import { escapeHtml as esc,formatDate,numberLabel,filterRecords,editable,savePayload,errorMessage,statusLabel } from './model.js';
+import { escapeHtml as esc,formatDate,numberLabel,filterRecords,editable,savePayload,errorMessage,statusLabel } from './model.js?v=20261027-filtros-2';
 
 const svg=(body,size=18)=>`<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
 const icons={file:svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>'),grid:svg('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>'),calendar:svg('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18M8 15h2M14 15h2"/>'),archive:svg('<path d="M4 8h16v12H4zM3 3h18v5H3zM10 12h4"/>'),pen:svg('<path d="m16 3 5 5-12 12-6 1 1-6zM14 5l5 5M3 21h18"/>'),arrow:svg('<path d="M5 12h14m-5-5 5 5-5 5"/>',15),back:svg('<path d="M19 12H5m5-5-5 5 5 5"/>',15),check:svg('<path d="m5 12 4 4L19 6"/>',16),lock:svg('<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/>'),refresh:svg('<path d="M20 7a8 8 0 1 0 1 7M20 3v5h-5"/>',15),user:svg('<circle cx="12" cy="8" r="3"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/>',15),logout:svg('<path d="M9 4H4v16h5M10 12h11m-4-4 4 4-4 4"/>',16),eye:svg('<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',18),plus:svg('<path d="M12 5v14M5 12h14"/>',16)};
@@ -54,7 +55,7 @@ function renderView(){
 function renderRecords(main){
   const historical=state.view==='historical',signatures=state.view==='signatures';
   const title=historical?'Atas históricas':signatures?'Assinaturas':'Atas registradas';
-  main.innerHTML=`<div class="page-heading"><div><span class="eyebrow">ACERVO NEAD</span><h1>${title}</h1><p>${historical?'Consulta dos documentos originais catalogados.':signatures?'Acompanhamento dos documentos com conteúdo finalizado.':'Consulte e acompanhe os registros dos alinhamentos.'}</p></div>${historical&&state.profile.pode_editar?button('Importar PDF original','import-historical','primary',icons.plus):''}${button('Atualizar','reload','secondary',icons.refresh)}</div>${signatures?'<div class="notice">A assinatura digital está em implantação. O status “Aguardando assinatura” indica que o texto foi finalizado; não representa assinatura GOV.BR.</div>':''}${historical?'<div class="notice">O PDF histórico é preservado integralmente em acervo privado, com verificação de integridade e numeração institucional única.</div>':''}<section class="panel"><div class="list-toolbar"><input id="record-search" class="filter-input" type="search" aria-label="Filtrar lista carregada" placeholder="Filtrar por número, disciplina ou curso" value="${esc(state.filter)}">${!historical&&!signatures?`<select id="record-status" class="filter-select" aria-label="Situação"><option value="">Todas as situações</option><option value="rascunho" ${state.status==='rascunho'?'selected':''}>Rascunho</option><option value="finalizada" ${state.status==='finalizada'?'selected':''}>Finalizada</option><option value="registrada" ${state.status==='registrada'?'selected':''}>Histórica</option></select>`:''}</div><div id="records-table"></div><div class="table-footer"><span id="records-count"></span>${state.hasMore?button('Carregar mais','load-more','secondary'):''}</div></section>`;
+  main.innerHTML=`<div class="page-heading"><div><span class="eyebrow">ACERVO NEAD</span><h1>${title}</h1><p>${historical?'Consulta dos documentos originais catalogados.':signatures?'Acompanhamento dos documentos com conteúdo finalizado.':'Consulte e acompanhe os registros dos alinhamentos.'}</p></div>${historical&&state.profile.pode_editar?button('Importar PDF original','import-historical','primary',icons.plus):''}${button('Atualizar','reload','secondary',icons.refresh)}</div>${signatures?'<div class="notice">A assinatura digital está em implantação. O status “Aguardando assinatura” indica que o texto foi finalizado; não representa assinatura GOV.BR.</div>':''}${historical?'<div class="notice">O PDF histórico é preservado integralmente em acervo privado, com verificação de integridade e numeração institucional única.</div>':''}<section class="panel"><div class="list-toolbar"><input id="record-search" class="filter-input" type="search" aria-label="Filtrar lista carregada" placeholder="Filtrar por número, disciplina ou curso" value="${esc(state.filter)}">${!historical&&!signatures?renderMultiFilter('record-status','Situação',{rascunho:'Rascunho',finalizada:'Finalizada',registrada:'Histórica'},state.status,'Todas as situações'):''}<button class="button secondary" data-action="clear-record-filters">Limpar filtros</button></div><div id="records-table"></div><div class="table-footer"><span id="records-count"></span>${state.hasMore?button('Carregar mais','load-more','secondary'):''}</div></section>`;
   updateRecordResults();
 }
 function updateRecordResults(){const records=filterRecords(state.records,state.filter,state.view==='signatures'?'finalizada':state.status,state.view==='historical'?'historica':'');document.querySelector('#records-table').innerHTML=recordsTable(records);document.querySelector('#records-count').textContent=`${records.length} resultado(s) · ${state.records.length} ata(s) carregada(s)`;}
@@ -125,11 +126,12 @@ app.addEventListener('input',event=>{
   if(event.target.id==='ia-notes')state.iaNotes=event.target.value;
   if(event.target.id==='record-search'){state.filter=event.target.value;updateRecordResults();}
 });
-app.addEventListener('change',event=>{if(event.target.id==='record-status'){state.status=event.target.value;updateRecordResults();}});
+app.addEventListener('change',event=>{if(event.target.matches('[data-multi-filter="record-status"]')){state.status=readMultiFilter(event.target).values;updateRecordResults();}});
 app.addEventListener('click',async event=>{
   const el=event.target.closest('[data-action]');if(!el||el.disabled)return;
   if(state.busy)return;
   const action=el.dataset.action;
+  if(action==='clear-record-filters'){state.filter='';state.status=[];return renderRecords(document.querySelector('#main'));}
   if(action==='auth-google'){
     el.disabled=true;el.textContent='Conectando ao Google…';
     try{const url=await prepareGoogleLogin(client,config,window.location.origin);window.location.assign(url);}
