@@ -14,6 +14,7 @@ export function mediatorIds(offer,stage=''){
  return stage==='revisao'?(review?[review]:[]):stage?allocated:[...new Set([...allocated,...(review?[review]:[])])];
 }
 export function emailStatus(meeting){
+ if(meeting.legado_preservado)return 'Histórico preservado';
  const latest=(meeting.comunicacoes||[]).find(c=>c.status!=='substituida');
  if(latest?.resultado?.email_status==='sem_destinatarios')return 'Sem destinatários';
  return latest?.status==='concluida'?'Enviado':latest?.status==='erro'?'Erro':'Pendente';

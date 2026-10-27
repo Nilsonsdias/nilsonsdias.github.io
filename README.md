@@ -19,3 +19,5 @@ https://nilsonsdias.github.io/nead/. Arquivos da aplicação em nead/; raiz cont
 ## Modelos de importação — 26/10/2026
 
 Modelos XLSX públicos sem dados pessoais em nead/modelos, disponíveis nas telas de importação de Pessoas e Ofertas. Fonte 195d1002f4b7643b4a72deb76e0630d1e69440a6. CI aprovado em 154 verificações. Ativação da integração institucional é uma etapa separada de servidor.
+
+Entrada em operação institucional em 26/10/2026. Modelos XLSX e integração Google configurados; nenhum dado privado ou segredo neste repositório.
