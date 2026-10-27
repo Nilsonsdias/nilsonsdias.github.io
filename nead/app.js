@@ -1,5 +1,5 @@
 import {navigationGroups} from './nead-logic.js';
-import {installNead,modules,roles} from './nead.js';
+import {installNead,modules,roles} from './nead.js?v=20261027-ajustes-1';
 import { createClient } from './vendor/supabase.js';
 import { config } from './config.js';
 import {applicationUrl,prepareGoogleLogin,oauthCallbackError,clearOAuthErrorUrl} from './auth.js';
