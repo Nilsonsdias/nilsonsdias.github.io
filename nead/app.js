@@ -1,6 +1,6 @@
-import {renderMultiFilter,readMultiFilter} from './multi-filter.js';
+import {renderMultiFilter,readMultiFilter,installMultiFilterDismiss} from './multi-filter.js?v=20261027-recolher-3';
 import {navigationGroups} from './nead-logic.js?v=20261027-filtros-2';
-import {installNead,modules,roles} from './nead.js?v=20261027-filtros-2';
+import {installNead,modules,roles} from './nead.js?v=20261027-recolher-3';
 import { createClient } from './vendor/supabase.js';
 import { config } from './config.js';
 import {applicationUrl,prepareGoogleLogin,oauthCallbackError,clearOAuthErrorUrl} from './auth.js';
@@ -10,6 +10,7 @@ import { escapeHtml as esc,formatDate,numberLabel,filterRecords,editable,savePay
 const svg=(body,size=18)=>`<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
 const icons={file:svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>'),grid:svg('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>'),calendar:svg('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18M8 15h2M14 15h2"/>'),archive:svg('<path d="M4 8h16v12H4zM3 3h18v5H3zM10 12h4"/>'),pen:svg('<path d="m16 3 5 5-12 12-6 1 1-6zM14 5l5 5M3 21h18"/>'),arrow:svg('<path d="M5 12h14m-5-5 5 5-5 5"/>',15),back:svg('<path d="M19 12H5m5-5-5 5 5 5"/>',15),check:svg('<path d="m5 12 4 4L19 6"/>',16),lock:svg('<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/>'),refresh:svg('<path d="M20 7a8 8 0 1 0 1 7M20 3v5h-5"/>',15),user:svg('<circle cx="12" cy="8" r="3"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/>',15),logout:svg('<path d="M9 4H4v16h5M10 12h11m-4-4 4 4-4 4"/>',16),eye:svg('<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',18),plus:svg('<path d="M12 5v14M5 12h14"/>',16)};
 const app=document.querySelector('#app'),toast=document.querySelector('#toast');
+installMultiFilterDismiss(document);
 const state={user:null,profile:null,view:'painel',records:[],alignments:[],summary:null,current:null,dirty:false,text:'',filter:'',status:'',hasMore:false,busy:false};
 const client=createClient(config.url,config.publishableKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:'pkce'},global:{fetch:(url,options={})=>fetch(url,{...options,signal:options.signal||AbortSignal.timeout(20000)})}});
 let bootPromise=null,epoch=0,toastTimer;

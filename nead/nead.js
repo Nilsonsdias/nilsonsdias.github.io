@@ -1,4 +1,4 @@
-import {renderMultiFilter,readMultiFilter} from './multi-filter.js';
+import {renderMultiFilter,readMultiFilter} from './multi-filter.js?v=20261027-recolher-3';
 import {selectionValues} from './filter-selection.js';
 import {readWorkbook} from './workbook.js';
 import {filterRows,mediatorIds,emailStatus,nextAction,mapImport} from './nead-logic.js?v=20261027-filtros-2';

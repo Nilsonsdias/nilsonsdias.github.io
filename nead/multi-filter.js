@@ -13,3 +13,12 @@ export function readMultiFilter(target){
  menu.querySelector('summary').setAttribute('aria-label',menu.dataset.filterTitle+': '+summary);
  return {key:target.dataset.multiFilter,values};
 }
+
+export function installMultiFilterDismiss(root=document){
+ const closeExcept=active=>{for(const menu of root.querySelectorAll('[data-multi-menu][open]'))if(menu!==active)menu.open=false;};
+ const outsideClick=event=>closeExcept(event.target.closest?.('[data-multi-menu]'));
+ const escape=event=>{if(event.key!=='Escape')return;const active=root.activeElement?.closest?.('[data-multi-menu][open]');closeExcept(null);if(active)active.querySelector('summary').focus();};
+ root.addEventListener('click',outsideClick,true);
+ root.addEventListener('keydown',escape);
+ return ()=>{root.removeEventListener('click',outsideClick,true);root.removeEventListener('keydown',escape);};
+}
