@@ -55,7 +55,6 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
   '<label class="field">Legenda<input name="legenda" maxlength="500" value="'+esc(legenda)+'" '+(edit?'':'readonly')+'></label></section></div>'+
   '<aside><section class="panel panel-body"><h3>Curso e participantes</h3>'+fields(draft,!edit,a.categoria)+'<p class="section-note">Nomes e curso pertencem a esta ata; não alteram Pessoas e Ofertas.</p></section>'+
   '<section class="panel panel-body"><h3>Assinatura</h3><p>'+esc(a.tipo==='historica'?'PDF histórico final assinado':a.status_assinatura==='assinada'?'Assinada':a.status==='rascunho'?'Não iniciada':'Aguardando PDF assinado')+'</p><p class="revision">Revisão '+a.revisao+'. Histórico preservado.</p></section>'+
-  (edit&&a.reuniao_id?'<section class="panel panel-body"><h3>Assistente de redação</h3><label class="field">Anotações da reunião<textarea id="atas-notes" rows="5">'+esc(state.iaNotes||'')+'</textarea></label><label class="checkbox-field"><input id="atas-consent" type="checkbox"> Autorizo enviar anotações e participantes ao assistente (Groq).</label>'+btn('Gerar sugestão','suggest')+'<p class="section-note">Revise os fatos. A sugestão não finaliza nem assina.</p></section>':'')+
   '</aside></div></form>';
  }
  function render(main){
@@ -167,13 +166,8 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
     }else{
      const link=document.createElement('a');link.href=url;link.download='Ata-'+ataNumber(state.current).replace('/','-')+'.pdf';link.click();setTimeout(()=>{URL.revokeObjectURL(url);urls.delete(url);},10000);
     }
-   }else if(action==='suggest'){
-    if(!document.querySelector('#atas-consent').checked)throw Error('Confirme o envio das anotações ao assistente.');
-    sync();state.iaNotes=document.querySelector('#atas-notes').value;if(state.dirty)throw Error('Salve o rascunho antes de gerar a sugestão, para usar os nomes e o curso conferidos.');const {data,error}=await invoke('nead-redacao',{body:{ata_id:state.current.id,notas:state.iaNotes,confirmar_envio:true}});
-    if(error)throw Error('Sugestão indisponível. Suas anotações foram preservadas.');
-    if(data.revisao!==state.current.revisao)throw Error('A ata mudou durante a redação. Confira a versão atual.');
-    if(!state.text.trim()||confirm('Substituir o texto atual pela sugestão?')){state.text=data.texto;state.iaSource=data.fonte;state.dirty=true;renderView();}
    }
+
   }catch(error){fail(error);}
   finally{working=false;state.busy=false;el.disabled=false;document.querySelectorAll('#atas-editor input,#atas-editor textarea').forEach(x=>x.disabled=false);}
  },true);
