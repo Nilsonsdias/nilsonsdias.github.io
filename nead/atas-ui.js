@@ -155,8 +155,8 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
     const bytes=action==='pdf'?await(await import('./ata-pdf.js?v=20261027-atas-4')).generateAtaPdf(state.current):await archive({ata_id:state.current.id,assinado:action==='signed-view'});
     const blob=new Blob([bytes],{type:'application/pdf'}),url=URL.createObjectURL(blob);urls.add(url);
     if(action==='original'||action==='signed-view'){
-     const d=dialog('<div class="actions"><h2>PDF da ata '+esc(ataNumber(state.current))+'</h2>'+btn('Fechar','close')+'</div><iframe class="ata-pdf-frame" title="PDF da ata"></iframe><a class="button secondary">Baixar PDF</a>');d.classList.add('ata-viewer');
-     d.querySelector('iframe').src=url;d.querySelector('iframe').dataset.blobUrl=url;const link=d.querySelector('a');link.href=url;link.download='Ata-'+ataNumber(state.current).replace('/','-')+'.pdf';
+     const d=dialog('<div class="actions"><h2>PDF da ata '+esc(ataNumber(state.current))+'</h2>'+btn('Fechar','close')+'</div><div class="ata-pdf-pages"></div><a class="button secondary">Baixar PDF</a>');d.classList.add('ata-viewer');
+     d.querySelector('.ata-pdf-pages').dataset.blobUrl=url;const {mountPdfViewer}=await import('./pdf-viewer.js?v=20261027-atas-5');if(!d.open)return;await mountPdfViewer(d.querySelector('.ata-pdf-pages'),blob);const link=d.querySelector('a');link.href=url;link.download='Ata-'+ataNumber(state.current).replace('/','-')+'.pdf';
     }else{
      const link=document.createElement('a');link.href=url;link.download='Ata-'+ataNumber(state.current).replace('/','-')+'.pdf';link.click();setTimeout(()=>{URL.revokeObjectURL(url);urls.delete(url);},10000);
     }
