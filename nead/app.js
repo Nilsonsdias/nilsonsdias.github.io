@@ -1,4 +1,4 @@
-import {installAtas} from './atas-ui.js?v=20261027-atas-6';
+import {installAtas} from './atas-ui.js?v=20261028-testes-1';
 import {renderMultiFilter,readMultiFilter,installMultiFilterDismiss} from './multi-filter.js?v=20261027-recolher-3';
 import {navigationGroups} from './nead-logic.js?v=20261028-pendencias-1';
 import {installNead,modules,roles} from './nead.js?v=20261028-pendencias-1';

@@ -1,7 +1,7 @@
 import {guardAtaSession} from './ata-session.js';
 import {renderMultiFilter,readMultiFilter} from './multi-filter.js?v=20261027-recolher-3';
 import {escapeHtml as esc,formatDate} from './model.js?v=20261027-atas-4';
-import {ataNumber,ataTitle,ataStatus,ataFields,parseNames} from './atas-model.js?v=20261027-atas-4';
+import {ataNumber,ataTitle,ataStatus,ataFields,parseNames,canCreateAta,canAttachSignedPdf} from './atas-model.js?v=20261028-testes-1';
 const btn=(label,action)=>'<button type="button" class="button secondary" data-ata-action="'+action+'">'+label+'</button>';
 const names=(label,key,value,readonly=false)=>'<label class="field">'+label+'<textarea name="'+key+'" rows="3" '+(readonly?'readonly':'')+' placeholder="Um nome por linha">'+esc((value||[]).join('\n'))+'</textarea></label>';
 function fields(d,readonly=false,category='alinhamento'){
@@ -30,8 +30,8 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
  function carga(){
   const c=state.carga;if(!c)return '';
   return '<div class="notice"><div><strong>'+(c.concluida?'Importação histórica concluída':'Importação histórica em andamento')+'</strong><p>'+
-  (c.concluida?'Novas atas seguem a sequência anual.':'Novas numerações serão liberadas após a confirmação do administrador.')+'</p>'+
-  (admin()?btn(c.concluida?'Reabrir importação histórica':'Todas as atas históricas foram importadas','carga'):'')+'</div></div>';
+  (c.concluida?'Novas atas seguem a sequência anual.':c.liberacao_temporaria?'Liberação temporária para testes ativa. Novas atas podem ser criadas; a importação histórica continua aberta. Os números serão reservados na sequência anual.':'Novas numerações serão liberadas após a confirmação do administrador.')+'</p>'+
+  (admin()?btn(c.concluida?'Reabrir importação histórica':'Todas as atas históricas foram importadas','carga')+(!c.concluida?btn(c.liberacao_temporaria?'Restabelecer bloqueio de novas atas':'Liberar novas atas para testes','testes'):''):'')+'</div></div>';
  }
  function table(records){
   return '<div class="table-scroll"><table><thead><tr><th>Número / ano</th><th>Título / curso</th><th>Data</th><th>Situação</th><th>Ação</th></tr></thead><tbody>'+
@@ -44,9 +44,9 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
   main.innerHTML='<div class="page-heading"><div>'+btn('Voltar ao acervo','back')+'<h1>Ata '+esc(ataNumber(a))+'</h1><p>'+esc(ataTitle(a))+'</p></div><div class="actions"><span class="badge">'+esc(ataStatus(a))+'</span>'+
   (a.tipo==='historica'?btn('Visualizar PDF original','original')+btn('Baixar PDF original','download'):btn('Gerar PDF','pdf'))+
   (a.documento_assinado_id?btn('Visualizar PDF assinado','signed-view'):'')+
-  (writable()&&['finalizada','registrada'].includes(a.status)?btn(a.documento_assinado_id?'Substituir PDF assinado':'Anexar PDF assinado','signed-upload'):'')+
+  (writable()&&canAttachSignedPdf(a)?btn(a.documento_assinado_id?'Substituir PDF assinado':'Anexar PDF assinado','signed-upload'):'')+
   (edit?btn('Salvar rascunho','save')+btn('Finalizar ata','finalize'):'')+(admin()?btn('Excluir ata','delete'):'')+'</div></div>'+
-  (!edit?'<div class="notice">'+(a.tipo==='historica'?'PDF original preservado. Use Visualizar PDF original para consultar na tela.':'Conteúdo finalizado e preservado. Anexe o PDF assinado para registrar a assinatura.')+'</div>':'')+
+  (!edit?'<div class="notice">'+(a.tipo==='historica'?'O PDF histórico importado é o arquivo final assinado. Ele está preservado e não exige outro anexo de assinatura. Use Visualizar PDF original para consultar na tela.':'Conteúdo finalizado e preservado. Anexe o PDF assinado para registrar a assinatura.')+'</div>':'')+
   '<form id="atas-editor"><div class="editor-grid"><div><section class="panel panel-body"><h2>Identificação</h2><p>'+esc(ataNumber(a))+' · '+formatDate(a.data_ata)+' · '+(a.categoria==='administrativa'?'Administrativa':'Alinhamento')+'</p>'+
   (a.disciplina?'<p>Disciplina: '+esc(a.disciplina)+(a.ordem_disciplina?' · Ordem '+esc(a.ordem_disciplina):'')+'</p>':'')+'</section>'+
   (a.tipo==='historica'?'':'<section class="panel panel-body"><label class="field">Texto da ata<textarea name="texto" class="editor-text" '+(edit?'':'readonly')+'>'+esc(state.text)+'</textarea></label><p id="atas-dirty">'+(state.dirty?'Alterações não salvas':'Conteúdo salvo')+'</p></section>')+
@@ -54,7 +54,7 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
   (edit?'<label class="field">Foto da reunião<input type="file" id="atas-photo" accept="image/jpeg,image/png,image/webp"></label>'+(photo?btn('Remover foto','photo-remove'):''):'')+
   '<label class="field">Legenda<input name="legenda" maxlength="500" value="'+esc(legenda)+'" '+(edit?'':'readonly')+'></label></section></div>'+
   '<aside><section class="panel panel-body"><h3>Curso e participantes</h3>'+fields(draft,!edit,a.categoria)+'<p class="section-note">Nomes e curso pertencem a esta ata; não alteram Pessoas e Ofertas.</p></section>'+
-  '<section class="panel panel-body"><h3>Assinatura</h3><p>'+esc(a.status_assinatura==='assinada'?'Assinada':a.status==='rascunho'?'Não iniciada':'Aguardando PDF assinado')+'</p><p class="revision">Revisão '+a.revisao+'. Histórico preservado.</p></section>'+
+  '<section class="panel panel-body"><h3>Assinatura</h3><p>'+esc(a.tipo==='historica'?'PDF histórico final assinado':a.status_assinatura==='assinada'?'Assinada':a.status==='rascunho'?'Não iniciada':'Aguardando PDF assinado')+'</p><p class="revision">Revisão '+a.revisao+'. Histórico preservado.</p></section>'+
   (edit&&a.reuniao_id?'<section class="panel panel-body"><h3>Assistente de redação</h3><label class="field">Anotações da reunião<textarea id="atas-notes" rows="5">'+esc(state.iaNotes||'')+'</textarea></label><label class="checkbox-field"><input id="atas-consent" type="checkbox"> Autorizo enviar anotações e participantes ao assistente (Groq).</label>'+btn('Gerar sugestão','suggest')+'<p class="section-note">Revise os fatos. A sugestão não finaliza nem assina.</p></section>':'')+
   '</aside></div></form>';
  }
@@ -66,9 +66,9 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
   main.innerHTML='<div class="page-heading"><div><span class="eyebrow">ACERVO NEAD</span><h1>'+heading+'</h1><p>Atas de alinhamento e administrativas em uma única sequência anual.</p></div><div class="actions">'+
   (writable()?(historical?btn('Importar PDF original','import'):btn('Nova ata avulsa','new')):'')+btn('Atualizar','reload')+'</div></div>'+carga()+
   (state.view==='overview'?'<section class="stats" aria-label="Resumo do acervo">'+[['Total de atas',state.summary?.total],['Em elaboração',state.summary?.rascunhos],['Aguardando assinatura',state.summary?.aguardando_assinatura],['Acervo histórico',state.summary?.historicas]].map(([label,value])=>'<article class="stat"><div class="stat-top">'+label+'</div><div class="stat-value">'+(value??'—')+'</div></article>').join('')+'</section>':'')+
-  (signatures?'<div class="notice">Finalize a ata, gere o PDF e anexe o arquivo assinado manualmente ou por serviço externo. O envio não faz validação criptográfica.</div>':'')+
+  (signatures?'<div class="notice">Para atas geradas no sistema: finalize a ata, gere o PDF e anexe o arquivo assinado manualmente ou por serviço externo. Atas históricas já possuem o PDF final e não entram nesta etapa. O envio não faz validação criptográfica.</div>':'')+
   '<section class="panel"><div class="list-toolbar"><input id="atas-search" type="search" class="filter-input" placeholder="Buscar número, título ou curso" aria-label="Buscar atas" value="'+esc(state.filter||'')+'">'+renderMultiFilter('atas-status','Situação',{rascunho:'Rascunho',finalizada:'Finalizada',registrada:'Histórica',assinada:'Assinada'},state.status,'Todas as situações')+btn('Limpar filtros','clear-filters')+'</div><div id="atas-results"></div><div class="table-footer">'+(state.hasMore?btn('Carregar mais','more'):'')+'</div></section>';
-  const base=state.records.filter(a=>(!historical||a.tipo==='historica')&&(!signatures||['finalizada','registrada'].includes(a.status)));
+  const base=state.records.filter(a=>(!historical||a.tipo==='historica')&&(!signatures||canAttachSignedPdf(a)));
   const update=q=>{state.filter=q;const norm=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR');document.querySelector('#atas-results').innerHTML=table(base.filter(a=>(!Array.isArray(state.status)||!state.status.length||state.status.includes(a.status)||a.status_assinatura==='assinada'&&state.status.includes('assinada'))&&norm([ataNumber(a),ataTitle(a),ataFields(a).curso].join(' ')).includes(norm(q))));};
   document.querySelector('#atas-search').addEventListener('input',e=>update(e.target.value));document.querySelectorAll('[data-multi-filter="atas-status"]').forEach(el=>el.addEventListener('change',e=>{state.status=readMultiFilter(e.target).values;update(state.filter||'');}));update(state.filter||'');return true;
  }
@@ -129,18 +129,23 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
   if(action==='reload'){if(state.dirty&&!confirm('Descartar alterações não salvas?'))return;return loadData();}
   if(action==='more')return loadData(true);
   if(action==='new'||action==='import'){
-   if(action==='new'&&!state.carga?.concluida){fail(Error('Conclua a importação histórica antes de criar novas atas.'));return;}
+   if(action==='new'&&!canCreateAta(state.carga)){fail(Error('Conclua a importação histórica antes de criar novas atas.'));return;}
    if(action==='import'&&state.carga?.concluida){fail(Error('O administrador deve reabrir a importação histórica.'));return;}
    newForm(action==='import');return;
   }
   if(action==='photo-remove'){sync();photo='';draft.foto='';state.dirty=true;renderView();return;}
   if(action==='signed-upload'){
+   if(!canAttachSignedPdf(state.current)){fail(Error('O anexo de assinatura é exclusivo das atas geradas e finalizadas no sistema.'));return;}
    dialog('<h2>Anexar PDF assinado — '+esc(ataNumber(state.current))+'</h2><p>Selecione a ata já assinada manualmente ou por serviço externo. O original e as versões anteriores serão preservados.</p><form id="atas-signed"><label class="field">PDF assinado (até 20 MB)<input name="arquivo" type="file" accept="application/pdf,.pdf" required></label><input type="hidden" name="acao" value="assinado"><input type="hidden" name="ata_id" value="'+state.current.id+'"><input type="hidden" name="revisao" value="'+state.current.revisao+'"><p class="section-note">A indicação Assinada registra o recebimento; não é validação criptográfica.</p><p class="form-message error" role="alert"></p><div class="actions"><button class="button primary" type="submit">Registrar PDF assinado</button>'+btn('Cancelar','close')+'</div></form>');return;
   }
   if(action==='finalize'&&!confirm('Conferiu identificação, participantes e texto? Após finalizar o conteúdo ficará bloqueado.'))return;
   working=true;state.busy=true;el.disabled=true;
   try{
-   if(action==='carga'){
+   if(action==='testes'){
+    const c=state.carga;
+    if(!confirm(c.liberacao_temporaria?'Restabelecer o bloqueio de novas atas até concluir a importação histórica?':'Liberar temporariamente a criação de atas para testes, mantendo a importação histórica aberta? Os números criados ficam reservados; esta ação não exclui nem reinicia a numeração.'))return;
+    state.carga=await rpc('nead_liberar_criacao_temporaria_atas',{p_liberada:!c.liberacao_temporaria,p_revisao:c.revisao});renderView();
+   }else if(action==='carga'){
     const c=state.carga,summary=(c.anos||[]).map(x=>x.ano+': '+x.quantidade+' ata(s), maior número reservado '+x.maior_numero).join('\n');
     if(!confirm((c.concluida?'Reabrir importação e bloquear temporariamente novas numerações?':'Confirma que TODAS as atas históricas foram importadas? Isso libera a sequência anual.')+'\n\n'+summary))return;
     state.carga=await rpc('nead_concluir_carga_atas',{p_concluida:!c.concluida,p_revisao:c.revisao});renderView();
