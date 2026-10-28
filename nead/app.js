@@ -1,7 +1,7 @@
 import {installAtas} from './atas-ui.js?v=20261027-atas-6';
 import {renderMultiFilter,readMultiFilter,installMultiFilterDismiss} from './multi-filter.js?v=20261027-recolher-3';
-import {navigationGroups} from './nead-logic.js?v=20261027-filtros-2';
-import {installNead,modules,roles} from './nead.js?v=20261028-reprocessar-1';
+import {navigationGroups} from './nead-logic.js?v=20261028-pendencias-1';
+import {installNead,modules,roles} from './nead.js?v=20261028-pendencias-1';
 import { createClient } from './vendor/supabase.js';
 import { config } from './config.js';
 import {applicationUrl,prepareGoogleLogin,oauthCallbackError,clearOAuthErrorUrl} from './auth.js';

@@ -60,3 +60,14 @@ export function navigationGroups(permission){
  const records=permission('atas')==='negado'?[]:[['overview','Visão geral'],['alignments','Alinhamentos e nova ata'],['records','Atas registradas'],['historical','Atas históricas'],['signatures','Assinaturas']];
  return [{id:'rotinas',label:'Processos e Rotinas',items:operations},{id:'atas',label:'Gestão de Atas',items:records},{id:'administracao',label:'Administração',items:[['usuarios','Usuários e acessos'],['auditoria','Auditoria']].filter(([v])=>permission(v)!=='negado')}].filter(g=>g.items.length);
 }
+
+// Comunicações substituídas pertencem ao histórico e não são pendências atuais.
+export function agendaState(meeting){
+ if(meeting.legado_preservado)return {pending:false,processing:false,manual:false,actions:['reagendar']};
+ const jobs=(meeting.comunicacoes||[]).filter(c=>c.status!=='substituida');
+ const processing=jobs.some(c=>c.status==='processando');
+ const manual=meeting.status_integracao==='conferencia_manual'||jobs.some(c=>c.status==='erro');
+ const pending=processing||manual||jobs.some(c=>['pendente','aguardando_configuracao'].includes(c.status))||['pendente','aguardando_configuracao','migrada_conferencia_pendente'].includes(meeting.status_integracao);
+ const actions=meeting.status==='cancelada'?(pending?['cancelar']:[]):['reagendar','reenviar',...(pending?['sincronizar']:[]),'cancelar'];
+ return {pending,processing,manual,actions};
+}
