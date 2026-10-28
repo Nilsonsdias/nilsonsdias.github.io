@@ -1,3 +1,4 @@
+import {guardAtaSession} from './ata-session.js';
 import {renderMultiFilter,readMultiFilter} from './multi-filter.js?v=20261027-recolher-3';
 import {escapeHtml as esc,formatDate} from './model.js?v=20261027-atas-4';
 import {ataNumber,ataTitle,ataStatus,ataFields,parseNames} from './atas-model.js?v=20261027-atas-4';
@@ -10,6 +11,7 @@ function fields(d,readonly=false,category='alinhamento'){
 }
 const readFields=f=>({curso:String(f.get('curso')||''),professores:parseNames(f.get('professores')),mediadores:parseNames(f.get('mediadores')),participantes:parseNames(f.get('participantes'))});
 export function installAtas({app,state,rpc,client,notify,renderView,loadData,openRecord}){
+ const rawRpc=rpc;rpc=(...args)=>guardAtaSession(state,()=>rawRpc(...args));const invoke=(...args)=>guardAtaSession(state,()=>client.functions.invoke(...args));
  let draftRevision=null,draft=null,draftId=null,photo='',legenda='',urls=new Set(),working=false;
  const admin=()=>state.profile?.perfil==='administrador';
  const writable=()=>state.profile?.pode_editar;
@@ -22,7 +24,7 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
   d.showModal();return d;
  }
  async function archive(body){
-  const {data,error}=await client.functions.invoke('nead-acervo',{body});
+  const {data,error}=await invoke('nead-acervo',{body});
   if(error){let m='Não foi possível acessar o acervo. Confira a ata antes de repetir.';try{m=(await error.context.json()).error||m;}catch{}throw Error(m);}return data;
  }
  function carga(){
@@ -162,7 +164,7 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
     }
    }else if(action==='suggest'){
     if(!document.querySelector('#atas-consent').checked)throw Error('Confirme o envio das anotações ao assistente.');
-    sync();state.iaNotes=document.querySelector('#atas-notes').value;if(state.dirty)throw Error('Salve o rascunho antes de gerar a sugestão, para usar os nomes e o curso conferidos.');const {data,error}=await client.functions.invoke('nead-redacao',{body:{ata_id:state.current.id,notas:state.iaNotes,confirmar_envio:true}});
+    sync();state.iaNotes=document.querySelector('#atas-notes').value;if(state.dirty)throw Error('Salve o rascunho antes de gerar a sugestão, para usar os nomes e o curso conferidos.');const {data,error}=await invoke('nead-redacao',{body:{ata_id:state.current.id,notas:state.iaNotes,confirmar_envio:true}});
     if(error)throw Error('Sugestão indisponível. Suas anotações foram preservadas.');
     if(data.revisao!==state.current.revisao)throw Error('A ata mudou durante a redação. Confira a versão atual.');
     if(!state.text.trim()||confirm('Substituir o texto atual pela sugestão?')){state.text=data.texto;state.iaSource=data.fonte;state.dirty=true;renderView();}
