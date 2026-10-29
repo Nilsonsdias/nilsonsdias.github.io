@@ -19,5 +19,5 @@ export function ataPdfTitle(a){
 }
 export function parseNames(value){return String(value||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);}
 
-export const canCreateAta=c=>c?.concluida===true||c?.liberacao_temporaria===true;
+export const canCreateAta=c=>c?.novas_liberadas===true||c?.concluida===true||c?.liberacao_temporaria===true;
 export const canAttachSignedPdf=a=>a?.tipo==='digital'&&a?.status==='finalizada';

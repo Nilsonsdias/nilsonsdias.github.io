@@ -1,7 +1,7 @@
 import {guardAtaSession} from './ata-session.js';
 import {renderMultiFilter,readMultiFilter} from './multi-filter.js?v=20261027-recolher-3';
 import {escapeHtml as esc,formatDate} from './model.js?v=20261027-atas-4';
-import {ataNumber,ataTitle,ataStatus,ataFields,parseNames,canCreateAta,canAttachSignedPdf} from './atas-model.js?v=20261028-testes-1';
+import {ataNumber,ataTitle,ataStatus,ataFields,parseNames,canCreateAta,canAttachSignedPdf} from './atas-model.js?v=20261029-reserva-1';
 const btn=(label,action)=>'<button type="button" class="button secondary" data-ata-action="'+action+'">'+label+'</button>';
 const names=(label,key,value,readonly=false)=>'<label class="field">'+label+'<textarea name="'+key+'" rows="3" '+(readonly?'readonly':'')+' placeholder="Um nome por linha">'+esc((value||[]).join('\n'))+'</textarea></label>';
 function fields(d,readonly=false,category='alinhamento'){
@@ -29,9 +29,8 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
  }
  function carga(){
   const c=state.carga;if(!c)return '';
-  return '<div class="notice"><div><strong>'+(c.concluida?'Importação histórica concluída':'Importação histórica em andamento')+'</strong><p>'+
-  (c.concluida?'Novas atas seguem a sequência anual.':c.liberacao_temporaria?'Liberação temporária para testes ativa. Novas atas podem ser criadas; a importação histórica continua aberta. Os números serão reservados na sequência anual.':'Novas numerações serão liberadas após a confirmação do administrador.')+'</p>'+
-  (admin()?btn(c.concluida?'Reabrir importação histórica':'Todas as atas históricas foram importadas','carga')+(!c.concluida?btn(c.liberacao_temporaria?'Restabelecer bloqueio de novas atas':'Liberar novas atas para testes','testes'):''):'')+'</div></div>';
+  const reservas=(c.reservas||[]).map(r=>esc(r.ano)+': números '+esc(r.inicio)+' a '+esc(r.fim)+' reservados para atas históricas; novas atas a partir de '+esc(Number(r.fim)+1)+'.').join(' ');
+  return '<div class="notice"><div><strong>Numeração anual liberada</strong><p>'+reservas+' A importação histórica pode ser feita a qualquer tempo. Nos demais anos, a sequência inicia em 1.</p></div></div>';
  }
  function table(records){
   return '<div class="table-scroll"><table><thead><tr><th>Número / ano</th><th>Título / curso</th><th>Data</th><th>Situação</th><th>Ação</th></tr></thead><tbody>'+
@@ -79,7 +78,7 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
  }
  function newForm(historical){
   const id=historical?'atas-import':'atas-new';
-  const d=dialog('<h2>'+(historical?'Importar ata histórica':'Nova ata avulsa')+'</h2><p>'+(historical?'O ano será obtido da data do documento.':'O número será atribuído automaticamente na sequência do ano informado.')+'</p><form id="'+id+'" class="form-grid">'+
+  const d=dialog('<h2>'+(historical?'Importar ata histórica':'Nova ata avulsa')+'</h2><p>'+(historical?'O ano será obtido da data do documento. Em 2026, use o número original de 1 a 170.':'O número será atribuído automaticamente na sequência do ano informado.')+'</p><form id="'+id+'" class="form-grid">'+
    '<label class="field">Categoria<select name="categoria"><option value="administrativa" '+(!historical?'selected':'')+'>Administrativa</option><option value="alinhamento" '+(historical?'selected':'')+'>Alinhamento</option></select></label>'+
    '<label class="field">Título da reunião<input name="titulo" maxlength="300" placeholder="Ex.: Reunião de Formação de Docentes"></label>'+
    (historical?'<label class="field">Número da ata<input name="numero" type="number" min="1" required></label>':'')+
@@ -129,7 +128,6 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
   if(action==='more')return loadData(true);
   if(action==='new'||action==='import'){
    if(action==='new'&&!canCreateAta(state.carga)){fail(Error('Conclua a importação histórica antes de criar novas atas.'));return;}
-   if(action==='import'&&state.carga?.concluida){fail(Error('O administrador deve reabrir a importação histórica.'));return;}
    newForm(action==='import');return;
   }
   if(action==='photo-remove'){sync();photo='';draft.foto='';state.dirty=true;renderView();return;}
@@ -140,21 +138,13 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
   if(action==='finalize'&&!confirm('Conferiu identificação, participantes e texto? Após finalizar o conteúdo ficará bloqueado.'))return;
   working=true;state.busy=true;el.disabled=true;
   try{
-   if(action==='testes'){
-    const c=state.carga;
-    if(!confirm(c.liberacao_temporaria?'Restabelecer o bloqueio de novas atas até concluir a importação histórica?':'Liberar temporariamente a criação de atas para testes, mantendo a importação histórica aberta? Os números criados ficam reservados; esta ação não exclui nem reinicia a numeração.'))return;
-    state.carga=await rpc('nead_liberar_criacao_temporaria_atas',{p_liberada:!c.liberacao_temporaria,p_revisao:c.revisao});renderView();
-   }else if(action==='carga'){
-    const c=state.carga,summary=(c.anos||[]).map(x=>x.ano+': '+x.quantidade+' ata(s), maior número reservado '+x.maior_numero).join('\n');
-    if(!confirm((c.concluida?'Reabrir importação e bloquear temporariamente novas numerações?':'Confirma que TODAS as atas históricas foram importadas? Isso libera a sequência anual.')+'\n\n'+summary))return;
-    state.carga=await rpc('nead_concluir_carga_atas',{p_concluida:!c.concluida,p_revisao:c.revisao});renderView();
-   }else if(action==='save'||action==='finalize'){
+   if(action==='save'||action==='finalize'){
     sync();document.querySelectorAll('#atas-editor input,#atas-editor textarea').forEach(x=>x.disabled=true);
     const updated=await rpc('nead_salvar_ata_v2',{p_ata:state.current.id,p_revisao:state.current.revisao,p_texto:state.text,p_dados:draft,p_fonte_ia:state.iaSource||null,p_finalizar:action==='finalize'});
     state.current=updated;state.text=updated.texto;state.dirty=false;draftId=null;renderView();notify(action==='save'?'Rascunho salvo.':'Ata finalizada. Gere o PDF e anexe a versão assinada.');
    }else if(action==='delete'){
     const motivo=prompt('Motivo da exclusão (mínimo 5 caracteres). Histórico e arquivos serão preservados.');if(motivo===null)return;
-    if(!confirm('Excluir a ata '+ataNumber(state.current)+' da listagem? Para reimportar este número, reabra a carga histórica.'))return;
+    if(!confirm('Excluir a ata '+ataNumber(state.current)+' da listagem? O administrador poderá reimportar uma ata histórica no mesmo número, dentro da faixa reservada.'))return;
     await rpc('nead_excluir_ata',{p_ata:state.current.id,p_revisao:state.current.revisao,p_motivo:motivo});state.dirty=false;state.current=null;state.view='records';await loadData();notify('Ata excluída da listagem. Histórico e arquivos preservados.');
    }else if(action==='pdf'||action==='download'||action==='original'||action==='signed-view'){
     if(state.dirty)throw Error('Salve o rascunho antes de gerar o PDF.');
