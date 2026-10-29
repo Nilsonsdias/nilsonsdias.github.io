@@ -24,7 +24,6 @@ export function processFieldSpecs(p, people={}){
   add('data','Data','date');add('hora','Hora','time');
   if(p.tipo==='revisao')add('usuario_ava','Usuário AVA');
   add('link_externo',p.tipo==='revisao'?'Link participação (obrigatório)':'Link participação (opcional)','url');
-  if(p.tipo==='alinhamento')add('numero_ata_legado','ATA anterior (legado)');
   if(p.tipo==='revisao')add('link_gravacao','Link gravação','url');
   add('convidados','Convidados adicionais');
  }
