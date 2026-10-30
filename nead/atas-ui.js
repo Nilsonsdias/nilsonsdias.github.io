@@ -1,3 +1,4 @@
+import {canUseStandardText,standardTextDecision} from './ata-standard-text.js?v=20261030-padrao-1';
 import {createHistoricalBatch} from './atas-batch.js?v=20261030-lote-1';
 import {guardAtaSession} from './ata-session.js';
 import {renderMultiFilter,readMultiFilter} from './multi-filter.js?v=20261027-recolher-3';
@@ -50,7 +51,7 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
   (!edit?'<div class="notice">'+(a.tipo==='historica'?'O PDF histórico importado é o arquivo final assinado. Ele está preservado e não exige outro anexo de assinatura. Use Visualizar PDF original para consultar na tela.':'Conteúdo finalizado e preservado. Anexe o PDF assinado para registrar a assinatura.')+'</div>':'')+
   '<form id="atas-editor"><div class="editor-grid"><div><section class="panel panel-body"><h2>Identificação</h2><p>'+esc(ataNumber(a))+' · '+formatDate(a.data_ata)+' · '+(a.categoria==='administrativa'?'Administrativa':'Alinhamento')+'</p>'+
   (a.disciplina?'<p>Disciplina: '+esc(a.disciplina)+(a.ordem_disciplina?' · Ordem '+esc(a.ordem_disciplina):'')+'</p>':'')+'</section>'+
-  (a.tipo==='historica'?'':'<section class="panel panel-body"><label class="field">Texto da ata<textarea name="texto" class="editor-text" '+(edit?'':'readonly')+'>'+esc(state.text)+'</textarea></label><p id="atas-dirty">'+(state.dirty?'Alterações não salvas':'Conteúdo salvo')+'</p></section>')+
+  (a.tipo==='historica'?'':'<section class="panel panel-body"><div class="actions wrap" style="justify-content:space-between"><label class="field" for="atas-texto">Texto da ata</label>'+(canUseStandardText(a,writable())?btn('Usar texto padrão','standard-text'):'')+'</div><textarea id="atas-texto" name="texto" class="editor-text" '+(edit?'':'readonly')+'>'+esc(state.text)+'</textarea><p id="atas-dirty">'+(state.dirty?'Alterações não salvas':'Conteúdo salvo')+'</p></section>')+
   '<section class="panel panel-body"><h3>Foto e legenda opcionais</h3>'+(photo?'<img class="ata-photo-preview" alt="Foto da reunião" src="'+esc(photo)+'">':'')+
   (edit?'<label class="field">Foto da reunião<input type="file" id="atas-photo" accept="image/jpeg,image/png,image/webp"></label>'+(photo?btn('Remover foto','photo-remove'):''):'')+
   '<label class="field">Legenda<input name="legenda" maxlength="500" value="'+esc(legenda)+'" '+(edit?'':'readonly')+'></label></section></div>'+
@@ -123,6 +124,15 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
   const el=e.target.closest('[data-ata-action]');if(!el)return;e.preventDefault();e.stopImmediatePropagation();if(working)return;
   const action=el.dataset.ataAction;
   if(action==='close'){close();return;}
+  if(action==='standard-text'||action==='standard-text-confirm'){
+   sync();const result=standardTextDecision(state.current,writable(),state.text,action==='standard-text-confirm');
+   if(result.action==='blocked')return;
+   if(result.action==='confirm'){
+    dialog('<h2>Substituir o texto da ata?</h2><p>O campo já possui conteúdo. Usar o texto padrão substituirá esse conteúdo na edição atual. A alteração só será gravada quando você salvar o rascunho.</p><div class="actions">'+btn('Cancelar','close')+btn('Substituir pelo texto padrão','standard-text-confirm')+'</div>');return;
+   }
+   const textarea=document.querySelector('#atas-editor [name=texto]');if(!textarea)return;
+   textarea.value=result.text;sync();if(action==='standard-text-confirm')close();textarea.focus();notify('Texto padrão inserido. Edite os marcadores e salve o rascunho.');return;
+  }
   if(action==='clear-filters'){state.filter='';state.status=[];renderView();return;}
   if(action==='open'){draftId=null;return openRecord(el.dataset.id);}
   if(action==='back'){if(state.dirty&&!confirm('Descartar alterações não salvas?'))return;state.dirty=false;state.current=null;state.view='records';return loadData();}
