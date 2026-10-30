@@ -1,3 +1,4 @@
+import {createHistoricalBatch} from './atas-batch.js?v=20261030-lote-1';
 import {guardAtaSession} from './ata-session.js';
 import {renderMultiFilter,readMultiFilter} from './multi-filter.js?v=20261027-recolher-3';
 import {escapeHtml as esc,formatDate} from './model.js?v=20261027-atas-4';
@@ -27,6 +28,7 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
   const {data,error}=await invoke('nead-acervo',{body});
   if(error){let m='Não foi possível acessar o acervo. Confira a ata antes de repetir.';try{m=(await error.context.json()).error||m;}catch{}throw Error(m);}return data;
  }
+ const batch=createHistoricalBatch({app,state,rpc,archive,notify,onImported:()=>loadData()});
  function carga(){
   const c=state.carga;if(!c)return '';
   const reservas=(c.reservas||[]).map(r=>esc(r.ano)+': números '+esc(r.inicio)+' a '+esc(r.fim)+' reservados para atas históricas; novas atas a partir de '+esc(Number(r.fim)+1)+'.').join(' ');
@@ -62,7 +64,7 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
   const historical=state.view==='historical',signatures=state.view==='signatures';
   const heading=historical?'Atas históricas':signatures?'Assinaturas':'Gestão de atas';
   main.innerHTML='<div class="page-heading"><div><span class="eyebrow">ACERVO NEAD</span><h1>'+heading+'</h1><p>Atas de alinhamento e administrativas em uma única sequência anual.</p></div><div class="actions">'+
-  (writable()?(historical?btn('Importar PDF original','import'):btn('Nova ata avulsa','new')):'')+btn('Atualizar','reload')+'</div></div>'+carga()+
+  (writable()?(historical?btn('Importar PDF original','import')+btn('Importação em lote','batch'):btn('Nova ata avulsa','new')):'')+btn('Atualizar','reload')+'</div></div>'+carga()+
   (state.view==='overview'?'<section class="stats" aria-label="Resumo do acervo">'+[['Total de atas',state.summary?.total],['Em elaboração',state.summary?.rascunhos],['Aguardando assinatura',state.summary?.aguardando_assinatura],['Acervo histórico',state.summary?.historicas]].map(([label,value])=>'<article class="stat"><div class="stat-top">'+label+'</div><div class="stat-value">'+(value??'—')+'</div></article>').join('')+'</section>':'')+
   (signatures?'<div class="notice">Para atas geradas no sistema: finalize a ata, gere o PDF e anexe o arquivo assinado manualmente ou por serviço externo. Atas históricas já possuem o PDF final e não entram nesta etapa. O envio não faz validação criptográfica.</div>':'')+
   '<section class="panel"><div class="list-toolbar"><input id="atas-search" type="search" class="filter-input" placeholder="Buscar número, título ou curso" aria-label="Buscar atas" value="'+esc(state.filter||'')+'">'+renderMultiFilter('atas-status','Situação',{rascunho:'Rascunho',finalizada:'Finalizada',registrada:'Histórica',assinada:'Assinada'},state.status,'Todas as situações')+btn('Limpar filtros','clear-filters')+'</div><div id="atas-results"></div><div class="table-footer">'+(state.hasMore?btn('Carregar mais','more'):'')+'</div></section>';
@@ -126,6 +128,7 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
   if(action==='back'){if(state.dirty&&!confirm('Descartar alterações não salvas?'))return;state.dirty=false;state.current=null;state.view='records';return loadData();}
   if(action==='reload'){if(state.dirty&&!confirm('Descartar alterações não salvas?'))return;return loadData();}
   if(action==='more')return loadData(true);
+  if(action==='batch'){batch.open();return;}
   if(action==='new'||action==='import'){
    if(action==='new'&&!canCreateAta(state.carga)){fail(Error('Conclua a importação histórica antes de criar novas atas.'));return;}
    newForm(action==='import');return;
