@@ -1,6 +1,6 @@
 import {escapeHtml as esc,formatDate} from './model.js?v=20261027-atas-4';
 import {readHistoricalWorkbook} from './atas-sheet-reader.js';
-import {parseHistoricalRows,historicalIssues,matchHistoricalFile,checkHistoricalPdf,historicalKey,historicalForm,runHistoricalBatch} from './atas-batch-model.js';
+import {parseHistoricalRows,historicalIssues,matchHistoricalFile,checkHistoricalPdf,historicalKey,historicalForm,runHistoricalBatch} from './atas-batch-model.js?v=20261103-modulos-1';
 const serverLabels={ocupada:'Número já utilizado no acervo.',excluida:'Registro excluído: trate a reimportação pelo formulário individual.',fora_da_reserva:'Número fora da faixa histórica reservada.',duplicado_no_lote:'Número repetido no lote.'};
 export function createHistoricalBatch({app,state,rpc,archive,notify,onImported}){
  return {open(){
@@ -8,10 +8,10 @@ export function createHistoricalBatch({app,state,rpc,archive,notify,onImported})
   const operator=state.user.id,d=document.createElement('dialog');d.className='atas-batch-dialog';d.id='atas-batch-dialog';
   let rows=[],sheets=[],files=[],page=0,busy=false,uploading=false,stop=false,changed=false;
   const active=()=>state.user?.id===operator;
-  const order=()=>Number(d.querySelector('#batch-order').value);
+  const order=()=>d.querySelector('#batch-order').value.trim();
   d.innerHTML='<div class="actions batch-heading"><div><h2>Importar atas históricas em lote</h2><p>Uma ordem por lote. Título da reunião e disciplina terão o mesmo nome.</p></div><button type="button" class="button secondary" data-batch="close">Fechar</button></div>'+
    '<section class="batch-setup"><label class="field">Relação de atas (XLS ou XLSX, até 10 MB)<input id="batch-sheet-file" type="file" accept=".xls,.xlsx"></label><label class="field" id="batch-sheet-label" hidden>Aba da planilha<select id="batch-sheet"></select></label>'+
-   '<div class="form-grid"><label class="field">Ordem das disciplinas<input id="batch-order" type="number" min="1" max="2147483647" step="1" value="1"></label><label class="field">Pasta dos PDFs<input id="batch-folder" type="file" webkitdirectory multiple></label><label class="field">Alternativa: selecionar PDFs<input id="batch-files" type="file" accept=".pdf,application/pdf" multiple></label></div><p class="section-note" id="batch-source">Selecione a planilha e a pasta acessível neste computador.</p></section>'+
+   '<div class="form-grid"><label class="field">Ordem das disciplinas<input id="batch-order" type="text" placeholder="1 a 10 ou Módulo 1" value="1"></label><label class="field">Pasta dos PDFs<input id="batch-folder" type="file" webkitdirectory multiple></label><label class="field">Alternativa: selecionar PDFs<input id="batch-files" type="file" accept=".pdf,application/pdf" multiple></label></div><p class="section-note" id="batch-source">Selecione a planilha e a pasta acessível neste computador.</p></section>'+
    '<div class="notice">Números de 1 a 170 estão reservados para históricas de 2026. Nenhum número será gerado para estas importações. Arquivos existentes não serão substituídos pelo lote.</div>'+
    '<div class="actions wrap batch-toolbar"><button class="button secondary" type="button" data-batch="check">Conferir dados e arquivos</button><label class="field">Mostrar<select id="batch-filter"><option value="all">Todas as atas</option><option value="pending">Com pendências</option><option value="ready">Aptas para importar</option><option value="sent">Importadas</option></select></label><button class="button secondary" type="button" data-batch="report">Baixar relatório CSV</button></div>'+
    '<p class="section-note" id="batch-message" role="status" aria-live="polite"></p><div id="batch-editor"></div><div class="table-scroll"><table class="batch-table"><thead><tr><th>Selecionar</th><th>Número / ano</th><th>Arquivo / título e disciplina</th><th>Data / curso(s)</th><th>Situação</th><th>Ações</th></tr></thead><tbody id="batch-rows"></tbody></table></div>'+

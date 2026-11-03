@@ -1,5 +1,6 @@
+import {ordemOf} from './ordem.js?v=20261103-modulos-1';
 import {canUseStandardText,standardTextDecision} from './ata-standard-text.js?v=20261030-padrao-1';
-import {createHistoricalBatch} from './atas-batch.js?v=20261030-lote-1';
+import {createHistoricalBatch} from './atas-batch.js?v=20261103-modulos-1';
 import {guardAtaSession} from './ata-session.js';
 import {renderMultiFilter,readMultiFilter} from './multi-filter.js?v=20261027-recolher-3';
 import {escapeHtml as esc,formatDate} from './model.js?v=20261027-atas-4';
@@ -50,7 +51,7 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
   (edit?btn('Salvar rascunho','save')+btn('Finalizar ata','finalize'):'')+(admin()?btn('Excluir ata','delete'):'')+'</div></div>'+
   (!edit?'<div class="notice">'+(a.tipo==='historica'?'O PDF histórico importado é o arquivo final assinado. Ele está preservado e não exige outro anexo de assinatura. Use Visualizar PDF original para consultar na tela.':'Conteúdo finalizado e preservado. Anexe o PDF assinado para registrar a assinatura.')+'</div>':'')+
   '<form id="atas-editor"><div class="editor-grid"><div><section class="panel panel-body"><h2>Identificação</h2><p>'+esc(ataNumber(a))+' · '+formatDate(a.data_ata)+' · '+(a.categoria==='administrativa'?'Administrativa':'Alinhamento')+'</p>'+
-  (a.disciplina?'<p>Disciplina: '+esc(a.disciplina)+(a.ordem_disciplina?' · Ordem '+esc(a.ordem_disciplina):'')+'</p>':'')+'</section>'+
+  (a.disciplina?'<p>Disciplina: '+esc(a.disciplina)+(a.ordem_disciplina?' · Ordem '+esc(ordemOf(a)):'')+'</p>':'')+'</section>'+
   (a.tipo==='historica'?'':'<section class="panel panel-body"><div class="actions wrap" style="justify-content:space-between"><label class="field" for="atas-texto">Texto da ata</label>'+(canUseStandardText(a,writable())?btn('Usar texto padrão','standard-text'):'')+'</div><textarea id="atas-texto" name="texto" class="editor-text" '+(edit?'':'readonly')+'>'+esc(state.text)+'</textarea><p id="atas-dirty">'+(state.dirty?'Alterações não salvas':'Conteúdo salvo')+'</p></section>')+
   '<section class="panel panel-body"><h3>Foto e legenda opcionais</h3>'+(photo?'<img class="ata-photo-preview" alt="Foto da reunião" src="'+esc(photo)+'">':'')+
   (edit?'<label class="field">Foto da reunião<input type="file" id="atas-photo" accept="image/jpeg,image/png,image/webp"></label>'+(photo?btn('Remover foto','photo-remove'):''):'')+
@@ -85,7 +86,7 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
    '<label class="field">Categoria<select name="categoria"><option value="administrativa" '+(!historical?'selected':'')+'>Administrativa</option><option value="alinhamento" '+(historical?'selected':'')+'>Alinhamento</option></select></label>'+
    '<label class="field">Título da reunião<input name="titulo" maxlength="300" placeholder="Ex.: Reunião de Formação de Docentes"></label>'+
    (historical?'<label class="field">Número da ata<input name="numero" type="number" min="1" required></label>':'')+
-   '<label class="field">Data da ata<input name="data_ata" type="date" required></label><label class="field" data-alignment>Disciplina<input name="disciplina"></label><label class="field" data-alignment>Ordem da disciplina<input name="ordem_disciplina" type="number" min="1"></label>'+
+   '<label class="field">Data da ata<input name="data_ata" type="date" required></label><label class="field" data-alignment>Disciplina<input name="disciplina"></label><label class="field" data-alignment>Ordem da disciplina<input name="ordem_disciplina" type="text" placeholder="1 a 10 ou Módulo 1"></label>'+
    '<div class="atas-person-fields"></div>'+
    (historical?'<label class="field">PDF original (até 20 MB)<input name="arquivo" type="file" accept="application/pdf,.pdf" required></label>':'')+
    '<p class="form-message error" role="alert"></p><div class="form-actions"><button type="submit" class="button primary">'+(historical?'Registrar original':'Criar rascunho')+'</button>'+btn('Cancelar','close')+'</div></form>');
@@ -114,7 +115,7 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
   const form=e.target,submit=form.querySelector('[type=submit]');working=true;state.busy=true;submit.disabled=true;
   try{
    const f=new FormData(form);let a;
-   if(form.id==='atas-new')a=await rpc('nead_criar_avulsa',{p_data:f.get('data_ata'),p_titulo:f.get('titulo'),p_categoria:f.get('categoria'),p_dados:readFields(f),p_disciplina:f.get('disciplina')||null,p_ordem:f.get('categoria')==='alinhamento'?Number(f.get('ordem_disciplina')):null});
+   if(form.id==='atas-new')a=await rpc('nead_criar_avulsa_v3',{p_data:f.get('data_ata'),p_titulo:f.get('titulo'),p_categoria:f.get('categoria'),p_dados:readFields(f),p_disciplina:f.get('disciplina')||null,p_ordem:f.get('categoria')==='alinhamento'?f.get('ordem_disciplina'):null});
    else a=(await archive(f)).ata;
    state.dirty=false;draftId=null;close();await loadData();await openRecord(a.id);notify(form.id==='atas-signed'?'PDF assinado registrado. Ata marcada como Assinada.':'Ata registrada e preservada.');
   }catch(error){form.querySelector('[role=alert]').textContent=error.message||'Operação não confirmada. Confira os dados.';}

@@ -1,3 +1,4 @@
+import {parseOrdem} from './ordem.js?v=20261103-modulos-1';
 const clean=v=>String(v??'').trim();
 const norm=v=>clean(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_|_$/g,'');
 export const fileKey=v=>clean(v).normalize('NFC').toLocaleLowerCase('pt-BR');
@@ -17,7 +18,7 @@ export function parseHistoricalRows(table){
 }
 export function historicalIssues(row,all,order){
  const out=[];
- if(!Number.isInteger(Number(order))||Number(order)<1||Number(order)>2147483647)out.push('Informe a ordem das disciplinas.');
+ try{parseOrdem(order);}catch(e){out.push(e.message);}
  if(!Number.isSafeInteger(row.numero)||row.numero<1)out.push('Número da ata inválido.');
  if(!historicalDate(row.data_ata))out.push('Data da reunião inválida.');
  if(!clean(row.titulo)||row.titulo.length>300)out.push('Informe um título de até 300 caracteres.');
@@ -43,7 +44,7 @@ export async function checkHistoricalPdf(file){
 export const historicalKey=r=>r.data_ata.slice(0,4)+'/'+r.numero;
 export function historicalForm(row,order,file){
  const form=new FormData();
- for(const [k,v] of Object.entries({acao:'historica_lote',numero:row.numero,data_ata:row.data_ata,titulo:clean(row.titulo),disciplina:clean(row.titulo),categoria:'alinhamento',ordem_disciplina:Number(order),curso:clean(row.curso)}))form.set(k,String(v));
+ for(const [k,v] of Object.entries({acao:'historica_lote',numero:row.numero,data_ata:row.data_ata,titulo:clean(row.titulo),disciplina:clean(row.titulo),categoria:'alinhamento',ordem_disciplina:parseOrdem(order).numero,ordem_tipo:parseOrdem(order).tipo,curso:clean(row.curso)}))form.set(k,String(v));
  form.set('arquivo',file);return form;
 }
 

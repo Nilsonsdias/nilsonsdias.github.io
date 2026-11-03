@@ -1,3 +1,4 @@
+import {parseOrdem,ordemLabel,ordemOf} from './ordem.js?v=20261103-modulos-1';
 import {displayTurma} from './turma.js?v=20261103-turma-1';
 import {normalize} from './model.js?v=20261027-filtros-2';
 import {selectionValues} from './filter-selection.js';
@@ -24,9 +25,10 @@ export function emailStatus(meeting){
 }
 export function filterRows(rows,search='',filters={}){
  const stages=selectionValues(filters.etapa);
- return rows.filter(r=>normalize([r.codigo_legado,r.curso,r.turma,displayTurma(r.turma),r.matriz,r.disciplina,r.nome_completo,r.email,r.cpf,...(r.contexto?.ofertas||[]).map(o=>o.curso+' '+displayTurma(o.turma))].join(' ')).includes(normalize(search))&&Object.entries(filters).every(([key,selected])=>{
+ return rows.filter(r=>normalize([r.codigo_legado,r.curso,ordemOf(r),r.turma,displayTurma(r.turma),r.matriz,r.disciplina,r.nome_completo,r.email,r.cpf,...(r.contexto?.ofertas||[]).map(o=>o.curso+' '+displayTurma(o.turma)+' '+ordemOf(o))].join(' ')).includes(normalize(search))&&Object.entries(filters).every(([key,selected])=>{
   const values=selectionValues(selected);if(!values.length)return true;
   if(key==='etapa')return true;
+  if(key==='ordem_disciplina')return values.some(v=>ordemLabel(v)===ordemOf(r));
   if(key==='turma')return values.some(v=>displayTurma(v)===displayTurma(r.turma));
   if(key==='mediador')return values.some(value=>value==='__sem_mediador__'?!(r.participantes||[]).some(p=>p.papel==='mediador'):mediatorIds(r,stages).includes(value));
   if(key==='docente')return r.participantes?.some(p=>p.papel==='docente'&&values.includes(p.id));
@@ -52,7 +54,7 @@ export function mapImport(rows,type){
    else if(k==='cpf')val=val.replace(/\D/g,'');
    else if(['inicio','inicio_semana_provas','termino_semana_provas','segunda_chamada','sub_termino','encerramento'].includes(k)){const m=val.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);if(m)val=m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');}
    obj[k]=val;
-  });return obj;
+  });if(type==='ofertas'){try{const order=parseOrdem(obj.ordem_disciplina);obj.ordem_disciplina=String(order.numero);obj.ordem_tipo=order.tipo;}catch(e){obj._erro_importacao=e.message;}}return obj;
  });
  Object.defineProperty(mapped,'unknownHeaders',{value:rows[0].filter((h,i)=>!headers[i]&&String(h??'').trim()),enumerable:false});return mapped;
 }
