@@ -1,3 +1,4 @@
+import {displayTurma} from './turma.js?v=20261103-turma-1';
 import {normalize} from './model.js?v=20261027-filtros-2';
 import {selectionValues} from './filter-selection.js';
 
@@ -23,9 +24,10 @@ export function emailStatus(meeting){
 }
 export function filterRows(rows,search='',filters={}){
  const stages=selectionValues(filters.etapa);
- return rows.filter(r=>normalize([r.codigo_legado,r.curso,r.turma,r.matriz,r.disciplina,r.nome_completo,r.email,r.cpf,...(r.contexto?.ofertas||[]).map(o=>o.curso+' '+o.turma)].join(' ')).includes(normalize(search))&&Object.entries(filters).every(([key,selected])=>{
+ return rows.filter(r=>normalize([r.codigo_legado,r.curso,r.turma,displayTurma(r.turma),r.matriz,r.disciplina,r.nome_completo,r.email,r.cpf,...(r.contexto?.ofertas||[]).map(o=>o.curso+' '+displayTurma(o.turma))].join(' ')).includes(normalize(search))&&Object.entries(filters).every(([key,selected])=>{
   const values=selectionValues(selected);if(!values.length)return true;
   if(key==='etapa')return true;
+  if(key==='turma')return values.some(v=>displayTurma(v)===displayTurma(r.turma));
   if(key==='mediador')return values.some(value=>value==='__sem_mediador__'?!(r.participantes||[]).some(p=>p.papel==='mediador'):mediatorIds(r,stages).includes(value));
   if(key==='docente')return r.participantes?.some(p=>p.papel==='docente'&&values.includes(p.id));
   if(key==='situacao')return r.processos?.some(p=>(!stages.length||stages.includes(p.tipo))&&values.includes(p.status));
