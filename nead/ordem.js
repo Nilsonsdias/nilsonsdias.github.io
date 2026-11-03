@@ -11,7 +11,24 @@ export function ordemLabel(value,tipo='regular'){
  if(value==null||String(value).trim()==='')return '';
  try{return parseOrdem(value,tipo).rotulo;}catch{return String(value);}
 }
-export const ordemOf=row=>ordemLabel(row?.ordem_disciplina,row?.ordem_tipo);
+// Uma oferta pode pertencer a várias ordens; cada item conserva o próprio tipo.
+export function parseOrdens(value,tipo='regular'){
+ const input=Array.isArray(value)?value:String(value??'').split(',');
+ if(!input.length||input.length>100)throw Error('Informe entre 1 e 100 ordens separadas por vírgula.');
+ const list=input.map(item=>{if(item&&typeof item==='object'){if(!Object.hasOwn(item,'numero')||!Object.hasOwn(item,'tipo'))throw Error('Item de ordem inválido.');return parseOrdem(item.numero,item.tipo);}return parseOrdem(item,tipo);});
+ const unique=[...new Map(list.map(o=>[o.tipo+':'+o.numero,o])).values()];
+ return unique.sort((a,b)=>Number(a.tipo==='modulo')-Number(b.tipo==='modulo')||a.numero-b.numero);
+}
+export function ordensDados(value){
+ const list=parseOrdens(value),first=list[0];
+ return {ordem_disciplina:first.numero,ordem_tipo:first.tipo,ordens_disciplina:list.length>1?list.map(({numero,tipo})=>({numero,tipo})):null};
+}
+export function ordensOf(row){
+ if(row?.contexto?.ofertas?.length)return [...new Set(row.contexto.ofertas.flatMap(ordensOf))].sort(compareOrdens);
+ if(Array.isArray(row?.ordens_disciplina))return parseOrdens(row.ordens_disciplina).map(o=>o.rotulo);
+ const label=ordemLabel(row?.ordem_disciplina,row?.ordem_tipo);return label?[label]:[];
+}
+export const ordemOf=row=>ordensOf(row).join(', ');
 export function compareOrdens(a,b){
  try{const x=parseOrdem(a),y=parseOrdem(b);return Number(x.tipo==='modulo')-Number(y.tipo==='modulo')||x.numero-y.numero;}catch{return String(a).localeCompare(String(b),'pt-BR',{numeric:true});}
 }

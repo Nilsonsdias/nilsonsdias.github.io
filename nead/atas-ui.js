@@ -1,6 +1,6 @@
-import {ordemOf} from './ordem.js?v=20261103-modulos-1';
+import {ordemOf} from './ordem.js?v=20261103-multiplas-1';
 import {canUseStandardText,standardTextDecision} from './ata-standard-text.js?v=20261030-padrao-1';
-import {createHistoricalBatch} from './atas-batch.js?v=20261103-modulos-1';
+import {createHistoricalBatch} from './atas-batch.js?v=20261103-multiplas-1';
 import {guardAtaSession} from './ata-session.js';
 import {renderMultiFilter,readMultiFilter} from './multi-filter.js?v=20261027-recolher-3';
 import {escapeHtml as esc,formatDate} from './model.js?v=20261027-atas-4';
