@@ -1,4 +1,5 @@
-export const ataNumber=a=>String(a.numero).padStart(2,'0')+'/'+(a.ano||String(a.data_ata).slice(0,4));
+import {historicalNumberLabel} from './historical-number.js?v=20261104-complemento-1';
+export const ataNumber=a=>historicalNumberLabel({...a,numero:String(a.numero).padStart(2,'0')})+'/'+(a.ano||String(a.data_ata).slice(0,4));
 export const ataTitle=a=>a.titulo||a.disciplina||'Ata de alinhamento';
 export const ataStatus=a=>a.tipo==='historica'?'Histórica — PDF final assinado':a.status_assinatura==='assinada'?'Assinada':a.status==='finalizada'?'Finalizada - aguardando PDF assinado':a.status==='registrada'?'Histórica':a.status;
 export function ataFields(a){
