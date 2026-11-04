@@ -196,7 +196,7 @@ export function installNead({state,rpc,renderView,notify,openRecord,createAta,in
    else if(form.matches('.process-form')){captureDrafts();const p=ns.editing.record.processos.find(p=>p.id===form.dataset.process),change=formProcess(form,p);if(!confirmSave([change]))return;const updated=await mutate('processos','salvar',change);ns.editing.record.processos=ns.editing.record.processos.map(x=>x.id===p.id?updated:x);const offer=ns.rows.find(o=>o.id===ns.editing.record.id);if(offer)offer.processos=ns.editing.record.processos;ns.drafts.delete(p.id);state.dirty=ns.drafts.size>0;await finishProcesses([change]);editOfferProcesses(ns.editing.record);return;}
    else if(ns.editing.kind==='usuarios'){const permissions=Object.fromEntries(Object.entries(v).filter(([k,x])=>k.startsWith('perm_')&&x).map(([k,x])=>[k.slice(5),x]));const r=ns.editing.record;await rpc('nead_salvar_acesso_previo',{p_dados:{id:r.usuario_id||null,pre_cadastro_id:r.pre_cadastro_id||null,revisao:r.revisao??null,email:v.email,perfil:v.perfil,ativo:v.ativo==='true',permissoes:permissions}});if(r.usuario_id===state.user.id){state.dirty=false;notify('Seu acesso foi atualizado.');await refreshAccess();return;}}
    else if(ns.editing.kind==='agenda'){if(!confirm('Reagendar todas as ofertas e atualizar a agenda e a comunicação institucional?'))return;const saved=await mutate('agenda','reagendar',{...v,id:ns.editing.record.id,revisao:ns.editing.record.revisao,confirmar_efeitos:true});state.dirty=false;try{await invokeGoogle({reuniao_id:saved.id,revisao:saved.revisao,acao:'sincronizar',confirmar:true});notify('Reagendamento, agenda e comunicação confirmados.');}catch(error){notify('Reagendamento salvo; integração pendente: '+error.message,true);}await load(state.view);return;}
-   else if(ns.editing.kind!=='readonly'){if(ns.editing.kind==='ofertas'){v.turma=turmaForSave(ns.editing.record.turma,v.turma);Object.assign(v,ordensDados(v.ordem_disciplina));}await mutate(ns.editing.kind,'salvar',{...v,id:ns.editing.record.id||null,revisao:ns.editing.record.revisao??null});}
+   else if(ns.editing.kind!=='readonly'){if(ns.editing.kind==='ofertas'){v.turma=turmaForSave(ns.editing.record.turma,v.turma);Object.assign(v,ordensDados(v.ordem_disciplina));}await mutate(ns.editing.kind,'salvar',recordSavePayload(ns.editing.kind,v,ns.editing.record));}
    state.dirty=false;notify('Alterações salvas.');await load(state.view);
   }catch(error){handleError(error);}finally{state.busy=false;if(submit?.isConnected)submit.disabled=false;}
  });
@@ -221,4 +221,13 @@ export function renderAgendaActions(r,canWrite){
   const title={reagendar:'Reagendar',reenviar:'Reenviar comunicação',sincronizar:'Reprocessar envios pendentes',cancelar:r.status==='cancelada'?'Confirmar cancelamento externo':'Cancelar'}[action];
   return '<button class="text-button" data-nead="agenda-'+action+'" data-id="'+esc(r.id)+'"'+(blocked?' disabled title="'+esc(reason)+'"':'')+'>'+title+'</button>';
  }).join('');
+}
+
+export function recordSavePayload(kind,values,record={}){
+ const data={...values,id:record.id||null,revisao:record.revisao??null};
+ if(kind==='pessoas'){
+  if(![true,false,'true','false'].includes(data.ativo))throw Error('Selecione se o cadastro está ativo.');
+  data.ativo=data.ativo===true||data.ativo==='true';
+ }
+ return data;
 }
