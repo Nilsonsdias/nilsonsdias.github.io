@@ -1,10 +1,10 @@
 import {ordemOf} from './ordem.js?v=20261103-multiplas-1';
 import {canUseStandardText,standardTextDecision} from './ata-standard-text.js?v=20261030-padrao-1';
-import {createHistoricalBatch} from './atas-batch.js?v=20261103-multiplas-1';
+import {createHistoricalBatch} from './atas-batch.js?v=20261104-complemento-1';
 import {guardAtaSession} from './ata-session.js';
 import {renderMultiFilter,readMultiFilter} from './multi-filter.js?v=20261103-filtros-1';
 import {escapeHtml as esc,formatDate} from './model.js?v=20261027-atas-4';
-import {ataNumber,ataTitle,ataStatus,ataFields,parseNames,canCreateAta,canAttachSignedPdf} from './atas-model.js?v=20261029-reserva-1';
+import {ataNumber,ataTitle,ataStatus,ataFields,parseNames,canCreateAta,canAttachSignedPdf} from './atas-model.js?v=20261104-complemento-1';
 const btn=(label,action)=>'<button type="button" class="button secondary" data-ata-action="'+action+'">'+label+'</button>';
 const names=(label,key,value,readonly=false)=>'<label class="field">'+label+'<textarea name="'+key+'" rows="3" '+(readonly?'readonly':'')+' placeholder="Um nome por linha">'+esc((value||[]).join('\n'))+'</textarea></label>';
 function fields(d,readonly=false,category='alinhamento'){
@@ -82,10 +82,10 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
  }
  function newForm(historical){
   const id=historical?'atas-import':'atas-new';
-  const d=dialog('<h2>'+(historical?'Importar ata histórica':'Nova ata avulsa')+'</h2><p>'+(historical?'O ano será obtido da data do documento. Em 2026, use o número original de 1 a 170.':'O número será atribuído automaticamente na sequência do ano informado.')+'</p><form id="'+id+'" class="form-grid">'+
+  const d=dialog('<h2>'+(historical?'Importar ata histórica':'Nova ata avulsa')+'</h2><p>'+(historical?'O ano será obtido da data do documento. Em 2026, use o número original de 1 a 170. Para números repetidos no histórico, use um complemento, como 2.1.':'O número será atribuído automaticamente na sequência do ano informado.')+'</p><form id="'+id+'" class="form-grid">'+
    '<label class="field">Categoria<select name="categoria"><option value="administrativa" '+(!historical?'selected':'')+'>Administrativa</option><option value="alinhamento" '+(historical?'selected':'')+'>Alinhamento</option></select></label>'+
    '<label class="field">Título da reunião<input name="titulo" maxlength="300" placeholder="Ex.: Reunião de Formação de Docentes"></label>'+
-   (historical?'<label class="field">Número da ata<input name="numero" type="number" min="1" required></label>':'')+
+   (historical?'<label class="field">Número da ata<input name="numero" type="text" inputmode="decimal" pattern="[0-9]+([.][0-9]+)?" maxlength="25" placeholder="2 ou 2.1" required></label>':'')+
    '<label class="field">Data da ata<input name="data_ata" type="date" required></label><label class="field" data-alignment>Disciplina<input name="disciplina"></label><label class="field" data-alignment>Ordem da disciplina<input name="ordem_disciplina" type="text" placeholder="1 a 10 ou Módulo 1"></label>'+
    '<div class="atas-person-fields"></div>'+
    (historical?'<label class="field">PDF original (até 20 MB)<input name="arquivo" type="file" accept="application/pdf,.pdf" required></label>':'')+
