@@ -1,9 +1,9 @@
 import {ordemOf} from './ordem.js?v=20261103-multiplas-1';
 import {displayTurma} from './turma.js?v=20261103-turma-1';
-import {installAtas} from './atas-ui.js?v=20261103-multiplas-1';
-import {renderMultiFilter,readMultiFilter,installMultiFilterDismiss} from './multi-filter.js?v=20261027-recolher-3';
+import {installAtas} from './atas-ui.js?v=20261103-filtros-1';
+import {renderMultiFilter,readMultiFilter,installMultiFilterDismiss} from './multi-filter.js?v=20261103-filtros-1';
 import {navigationGroups} from './nead-logic.js?v=20261103-multiplas-1';
-import {installNead,modules,roles} from './nead.js?v=20261103-multiplas-1';
+import {installNead,modules,roles} from './nead.js?v=20261103-filtros-1';
 import { createClient } from './vendor/supabase.js';
 import { config } from './config.js';
 import {applicationUrl,prepareGoogleLogin,oauthCallbackError,clearOAuthErrorUrl} from './auth.js';
