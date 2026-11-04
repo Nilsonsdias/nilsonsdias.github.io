@@ -1,6 +1,6 @@
 import {ordensDados,ordensOf,ordemOf,compareOrdens} from './ordem.js?v=20261103-multiplas-1';
 import {displayTurma,turmaForSave} from './turma.js?v=20261103-turma-1';
-import {renderMultiFilter,readMultiFilter} from './multi-filter.js?v=20261027-recolher-3';
+import {renderMultiFilter,readMultiFilter} from './multi-filter.js?v=20261103-filtros-1';
 import {selectionValues} from './filter-selection.js';
 import {readWorkbook} from './workbook.js';
 import {filterRows,mediatorIds,emailStatus,nextAction,mapImport,agendaState} from './nead-logic.js?v=20261103-multiplas-1';
@@ -158,7 +158,7 @@ export function installNead({state,rpc,renderView,notify,openRecord,createAta,in
  function exportCsv(rows,name){const keys=Object.keys(rows[0]||{}).filter(k=>k!=='ordens_disciplina'),safe=v=>{let s=String(v??'');if(/^[=+@\-\t\r]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';};const blob=new Blob(['\uFEFF',keys.map(safe).join(';'),'\r\n',...rows.map(r=>keys.map(k=>safe(k==='turma'?displayTurma(r[k]):k==='ordem_disciplina'?ordemOf(r):r[k])).join(';')+'\r\n')],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
  const handleError=e=>{const el=document.querySelector('#nead-form-error');if(el)el.textContent=e.message;notify(e.message||'Não foi possível salvar.',true);};
  document.querySelector('#app').addEventListener('input',e=>{if(e.target.closest('.grade-row,.process-form')||e.target.matches('[data-grade-input]'))captureDrafts();else if(e.target.closest('#nead-edit-form'))state.dirty=true;if(e.target.id==='nead-search'){captureDrafts();ns.search=e.target.value;ns.page=0;updateResults();}});
- document.querySelector('#app').addEventListener('change',async e=>{if(e.target.matches('[data-grade-input]'))captureDrafts();if(e.target.matches('[data-multi-filter]')&&e.target.dataset.multiFilter!=='record-status'){
+ document.querySelector('#app').addEventListener('change',async e=>{if(e.target.matches('[data-grade-input]'))captureDrafts();if(e.target.matches('[data-multi-filter]')&&!['record-status','atas-status','batch-status'].includes(e.target.dataset.multiFilter)){
  captureDrafts();const change=readMultiFilter(e.target);ns.page=0;ns.filters[change.key]=change.values;
  if(change.key==='etapa'){const allowed=selectedStatuses();ns.filters.situacao=selectionValues(ns.filters.situacao).filter(value=>allowed.includes(value));document.querySelector('[data-filter-control="situacao"]').outerHTML=situationFilter();}
  updateResults();return;
