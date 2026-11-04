@@ -1,6 +1,6 @@
 import {ordemOf} from './ordem.js?v=20261103-multiplas-1';
 import {displayTurma} from './turma.js?v=20261103-turma-1';
-import {installAtas} from './atas-ui.js?v=20261103-filtros-1';
+import {installAtas} from './atas-ui.js?v=20261104-complemento-1';
 import {renderMultiFilter,readMultiFilter,installMultiFilterDismiss} from './multi-filter.js?v=20261103-filtros-1';
 import {navigationGroups} from './nead-logic.js?v=20261103-multiplas-1';
 import {installNead,modules,roles} from './nead.js?v=20261103-filtros-1';
@@ -87,8 +87,8 @@ async function loadData(append=false){
   const currentEpoch=epoch;
   if(!append){shell();document.querySelector('#main').innerHTML='<div class="panel loading-panel"><span class="spinner" aria-hidden="true"></span> Carregando o acervo…</div>';}
   try{
-    const params={p_limite:100,p_ano:append?state.records.at(-1)?.ano??null:null,p_numero:append?state.records.at(-1)?.numero??null:null};
-    const [records,summary,alignments,carga]=state.permissions?.atas!=='negado'?await Promise.all([rpc('nead_listar_atas_v2',params),rpc('nead_resumo_atas'),rpc('nead_listar_alinhamentos'),rpc('nead_situacao_carga_atas')]):[[],{},[],null];
+    const params={p_limite:100,p_ano:append?state.records.at(-1)?.ano??null:null,p_numero:append?state.records.at(-1)?.numero??null:null,p_complemento:append?state.records.at(-1)?.numero_complemento??0:null};
+    const [records,summary,alignments,carga]=state.permissions?.atas!=='negado'?await Promise.all([rpc('nead_listar_atas_v3',params),rpc('nead_resumo_atas'),rpc('nead_listar_alinhamentos'),rpc('nead_situacao_carga_atas')]):[[],{},[],null];
     if(currentEpoch!==epoch)return;
     state.records=append?[...new Map([...state.records,...records].map(a=>[a.id,a])).values()]:records;
     state.carga=carga;state.hasMore=records.length===100;state.summary=summary;state.alignments=alignments;renderView();
