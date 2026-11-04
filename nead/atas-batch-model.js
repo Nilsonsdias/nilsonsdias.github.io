@@ -1,4 +1,5 @@
 import {parseOrdem} from './ordem.js?v=20261103-modulos-1';
+import {parseHistoricalNumber,historicalNumberValue,historicalNumberLabel,validHistoricalNumber} from './historical-number.js?v=20261104-complemento-1';
 const clean=v=>String(v??'').trim();
 const norm=v=>clean(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_|_$/g,'');
 export const fileKey=v=>clean(v).normalize('NFC').toLocaleLowerCase('pt-BR');
@@ -14,18 +15,18 @@ export function parseHistoricalRows(table){
  const aliases={NOME_DO_ARQUIVO:'arquivo',ARQUIVO:'arquivo',DATA_DA_REUNIAO:'data_ata',DATA_DA_ATA:'data_ata',DATA:'data_ata',NUMERO_DA_ATA:'numero',NUMERO:'numero',TITULO_DA_REUNIAO:'titulo',TITULO:'titulo',DISCIPLINA:'disciplina',CURSO_S:'curso',CURSOS:'curso',CURSO:'curso',OBSERVACOES:'observacoes'};
  const keys=table[0].map(v=>aliases[norm(v)]||'');
  for(const key of ['arquivo','data_ata','numero','titulo','curso'])if(keys.filter(k=>k===key).length!==1)throw Error('Cabeçalho obrigatório ausente ou repetido: '+({arquivo:'Nome do arquivo',data_ata:'Data da reunião',numero:'Número da ata',titulo:'Título da reunião',curso:'Curso(s)'})[key]);
- return table.slice(1).filter(r=>r.some(v=>clean(v))).map((cells,i)=>{const r={linha:i+2};keys.forEach((k,j)=>{if(k)r[k]=clean(cells[j]);});r.numero=/^\d+$/.test(r.numero)?Number(r.numero):NaN;r.data_ata=historicalDate(r.data_ata);r.disciplina=r.titulo;r.revisado=false;r.selecionada=false;return r;});
+ return table.slice(1).filter(r=>r.some(v=>clean(v))).map((cells,i)=>{const r={linha:i+2};keys.forEach((k,j)=>{if(k)r[k]=clean(cells[j]);});r.numero=historicalNumberValue(r.numero);r.data_ata=historicalDate(r.data_ata);r.disciplina=r.titulo;r.revisado=false;r.selecionada=false;return r;});
 }
 export function historicalIssues(row,all,order){
  const out=[];
  try{parseOrdem(order);}catch(e){out.push(e.message);}
- if(!Number.isSafeInteger(row.numero)||row.numero<1)out.push('Número da ata inválido.');
+ if(!validHistoricalNumber(row.numero))out.push('Número da ata inválido.');
  if(!historicalDate(row.data_ata))out.push('Data da reunião inválida.');
  if(!clean(row.titulo)||row.titulo.length>300)out.push('Informe um título de até 300 caracteres.');
  if(!clean(row.curso)||row.curso.length>500||/^(NAO_IDENTIFICADO|NAO_INFORMADO|NAO_CONSTA)/.test(norm(row.curso)))out.push('Informe o curso.');
  if(!clean(row.arquivo)||/[\/\\]/.test(row.arquivo))out.push('Informe somente o nome completo do arquivo, com extensão.');
  if(!/\.pdf$/i.test(row.arquivo))out.push('Arquivo deve ser PDF. Converta a imagem fora do sistema e ajuste o nome na relação.');
- if(all.some(r=>r!==row&&r.numero===row.numero&&r.data_ata.slice(0,4)===row.data_ata.slice(0,4)))out.push('Número repetido no lote para o mesmo ano.');
+ if(all.some(r=>r!==row&&String(historicalNumberValue(r.numero))===String(historicalNumberValue(row.numero))&&r.data_ata.slice(0,4)===row.data_ata.slice(0,4)))out.push('Número repetido no lote para o mesmo ano.');
  if(all.some(r=>r!==row&&fileKey(r.arquivo)===fileKey(row.arquivo)))out.push('Mesmo arquivo informado em mais de uma linha.');
  if(!row.revisado&&(/\bassinado\b/i.test(row.titulo)||/diverg|conferir|incert/i.test(row.observacoes||'')))out.push('Revise e confirme os dados desta linha.');
  return out;
@@ -54,7 +55,7 @@ export async function runHistoricalBatch(rows,{send,active=()=>true,stop=()=>fal
  for(const row of rows){
   if(stop()||!active())break;
   row.resultado='enviando';progress(row);
-  try{const result=await send(row);if(!result?.ata?.id||result.ata.numero!==row.numero||result.ata.ano!==Number(row.data_ata.slice(0,4)))throw Error('Resposta não confirmou a ata esperada.');row.resultado='importada';row.ata_id=result.ata.id;sent++;progress(row);if(!active())break;}
+  try{const result=await send(row);if(!result?.ata?.id||historicalNumberLabel(result.ata)!==parseHistoricalNumber(row.numero).rotulo||result.ata.ano!==Number(row.data_ata.slice(0,4)))throw Error('Resposta não confirmou a ata esperada.');row.resultado='importada';row.ata_id=result.ata.id;sent++;progress(row);if(!active())break;}
   catch(error){row.resultado='conferir';row.erro='Envio sem confirmação. Confira o acervo antes de tentar novamente. '+(error.message||'');progress(row);break;}
  }
  return sent;
