@@ -1,3 +1,4 @@
+import {dashboardNavigation,renderDashboards} from './dashboards.js?v=20261104-dashboards-1';
 import {ordemOf} from './ordem.js?v=20261103-multiplas-1';
 import {displayTurma} from './turma.js?v=20261103-turma-1';
 import {installAtas} from './atas-ui.js?v=20261104-complemento-1';
@@ -34,11 +35,12 @@ function renderGate(message){
   app.innerHTML=`<main class="initial" id="main"><section class="panel access-card">${brand()}<span class="tag">Conta autenticada</span><h1 style="margin-top:20px">Seu acesso está em análise</h1><p>${esc(message)}</p><p><strong>${esc(state.user?.email||'')}</strong></p><div class="actions">${button('Sair','logout')}${button('Verificar acesso','check-access','primary',icons.refresh)}</div></section></main>`;
 }
 function shell(){
-  const labels={...modules,overview:'Visão geral',alignments:'Alinhamentos',records:'Atas registradas',historical:'Atas históricas',signatures:'Assinaturas',editor:'Documento'};
+  const labels={...modules,overview:'Visão geral',alignments:'Alinhamentos',records:'Atas registradas',historical:'Atas históricas',signatures:'Assinaturas',editor:'Documento',dashboards:'Dashboards'};
   const groups=navigationGroups(nead.permission);
   state.navExpanded??={rotinas:true,atas:false,administracao:false};
   if(state.navView!==state.view){const active=groups.find(g=>g.items.some(([v])=>v===state.view)||g.id==='atas'&&state.view==='editor');if(active)state.navExpanded[active.id]=true;state.navView=state.view;}
-  const nav=groups.map(g=>`<section class="nav-group"><button class="nav-group-toggle" data-action="toggle-nav-group" data-group="${g.id}" aria-expanded="${!!state.navExpanded[g.id]}" aria-controls="nav-group-${g.id}"><span>${g.label}</span>${svg('<path d="m9 5 7 7-7 7"/>',14)}</button><div id="nav-group-${g.id}" class="nav-subitems" ${state.navExpanded[g.id]?'':'hidden'}>${g.items.map(([view,label])=>`<button data-action="nav" data-view="${view}" class="nav-item ${state.view===view?'active':''}" ${state.view===view?'aria-current="page"':''}>${icons[view==='agenda'||view==='alignments'?'calendar':view==='pessoas'||view==='usuarios'?'user':view==='historical'?'archive':view==='records'?'file':view==='signatures'?'pen':'grid']}<span>${label}</span>${view==='records'?`<span class="count">${state.summary?.total??'—'}</span>`:''}</button>`).join('')}</div></section>`).join('');
+  const dashboardNav=dashboardNavigation(state.view==='dashboards');
+  const nav=groups.map(g=>`${g.id==='administracao'?dashboardNav:''}<section class="nav-group"><button class="nav-group-toggle" data-action="toggle-nav-group" data-group="${g.id}" aria-expanded="${!!state.navExpanded[g.id]}" aria-controls="nav-group-${g.id}"><span>${g.label}</span>${svg('<path d="m9 5 7 7-7 7"/>',14)}</button><div id="nav-group-${g.id}" class="nav-subitems" ${state.navExpanded[g.id]?'':'hidden'}>${g.items.map(([view,label])=>`<button data-action="nav" data-view="${view}" class="nav-item ${state.view===view?'active':''}" ${state.view===view?'aria-current="page"':''}>${icons[view==='agenda'||view==='alignments'?'calendar':view==='pessoas'||view==='usuarios'?'user':view==='historical'?'archive':view==='records'?'file':view==='signatures'?'pen':'grid']}<span>${label}</span>${view==='records'?`<span class="count">${state.summary?.total??'—'}</span>`:''}</button>`).join('')}</div></section>`).join('')+(groups.some(g=>g.id==='administracao')?'':dashboardNav);
   const initials=(state.profile.email||'NE').slice(0,2).toUpperCase();
   app.innerHTML=`<div class="shell"><aside class="sidebar">${brand()}<nav class="navigation" aria-label="Navegação principal">${nav}</nav><div class="sidebar-bottom"><div class="environment"><b><span class="dot"></span> Portal institucional</b><p>Operação acadêmica e atas integradas.</p></div><div class="operator"><span class="avatar">${esc(initials)}</span><div><div class="operator-email" title="${esc(state.profile.email)}">${esc(state.profile.email)}</div><div class="operator-role">${esc(roles[state.profile.perfil]||state.profile.perfil)}</div></div><button class="logout" data-action="logout" aria-label="Sair da conta">${icons.logout}</button></div></div></aside><div class="workspace"><header class="topbar"><div class="breadcrumb"><span>NEAD</span><span>/</span><strong>${labels[state.view]}</strong></div><div class="topbar-right"><span class="topbar-date">${new Intl.DateTimeFormat('pt-BR',{day:'numeric',month:'long',year:'numeric',timeZone:'America/Sao_Paulo'}).format(new Date())}</span><span class="tag">Uso institucional</span><span class="mobile-brand"><button class="logout" data-action="logout" aria-label="Sair da conta">${icons.logout}</button></span></div></header><main class="main-content" id="main"></main></div></div>`;
 }
@@ -47,6 +49,7 @@ function recordsTable(records){return records.length?`<div class="table-scroll">
 function renderView(){
   if(state.view==='grade')state.view='processos';
   shell();const main=document.querySelector('#main');
+  if(state.view==='dashboards'){renderDashboards(main,state);return;}
   if(modules[state.view]){nead.load(state.view,state.view!==state.lastNeadView);state.lastNeadView=state.view;return;}
 
   if(atas.render(main))return;
