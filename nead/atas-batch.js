@@ -1,19 +1,24 @@
+import {renderMultiFilter,readMultiFilter} from './multi-filter.js?v=20261103-filtros-1';
+import {selectionValues} from './filter-selection.js';
 import {escapeHtml as esc,formatDate} from './model.js?v=20261027-atas-4';
 import {readHistoricalWorkbook} from './atas-sheet-reader.js';
 import {parseHistoricalRows,historicalIssues,matchHistoricalFile,checkHistoricalPdf,historicalKey,historicalForm,runHistoricalBatch} from './atas-batch-model.js?v=20261103-modulos-1';
 const serverLabels={ocupada:'Número já utilizado no acervo.',excluida:'Registro excluído: trate a reimportação pelo formulário individual.',fora_da_reserva:'Número fora da faixa histórica reservada.',duplicado_no_lote:'Número repetido no lote.'};
+export function filterHistoricalBatchRows(rows,selected,ready){
+ const values=selectionValues(selected);return rows.filter(r=>!values.length||values.some(value=>value==='sent'?r.resultado==='importada':value==='ready'?ready(r):value==='pending'?r.resultado!=='importada'&&!ready(r):false));
+}
 export function createHistoricalBatch({app,state,rpc,archive,notify,onImported}){
  return {open(){
   if(!state.user?.id||!state.profile?.pode_editar)throw Error('Seu acesso não permite importar atas.');
   const operator=state.user.id,d=document.createElement('dialog');d.className='atas-batch-dialog';d.id='atas-batch-dialog';
-  let rows=[],sheets=[],files=[],page=0,busy=false,uploading=false,stop=false,changed=false;
+  let filters=[],rows=[],sheets=[],files=[],page=0,busy=false,uploading=false,stop=false,changed=false;
   const active=()=>state.user?.id===operator;
   const order=()=>d.querySelector('#batch-order').value.trim();
   d.innerHTML='<div class="actions batch-heading"><div><h2>Importar atas históricas em lote</h2><p>Uma ordem por lote. Título da reunião e disciplina terão o mesmo nome.</p></div><button type="button" class="button secondary" data-batch="close">Fechar</button></div>'+
    '<section class="batch-setup"><label class="field">Relação de atas (XLS ou XLSX, até 10 MB)<input id="batch-sheet-file" type="file" accept=".xls,.xlsx"></label><label class="field" id="batch-sheet-label" hidden>Aba da planilha<select id="batch-sheet"></select></label>'+
    '<div class="form-grid"><label class="field">Ordem das disciplinas<input id="batch-order" type="text" placeholder="1 a 10 ou Módulo 1" value="1"></label><label class="field">Pasta dos PDFs<input id="batch-folder" type="file" webkitdirectory multiple></label><label class="field">Alternativa: selecionar PDFs<input id="batch-files" type="file" accept=".pdf,application/pdf" multiple></label></div><p class="section-note" id="batch-source">Selecione a planilha e a pasta acessível neste computador.</p></section>'+
    '<div class="notice">Números de 1 a 170 estão reservados para históricas de 2026. Nenhum número será gerado para estas importações. Arquivos existentes não serão substituídos pelo lote.</div>'+
-   '<div class="actions wrap batch-toolbar"><button class="button secondary" type="button" data-batch="check">Conferir dados e arquivos</button><label class="field">Mostrar<select id="batch-filter"><option value="all">Todas as atas</option><option value="pending">Com pendências</option><option value="ready">Aptas para importar</option><option value="sent">Importadas</option></select></label><button class="button secondary" type="button" data-batch="report">Baixar relatório CSV</button></div>'+
+   '<div class="actions wrap batch-toolbar"><button class="button secondary" type="button" data-batch="check">Conferir dados e arquivos</button>'+renderMultiFilter('batch-status','Mostrar',{pending:'Com pendências',ready:'Aptas para importar',sent:'Importadas'},filters,'Todas as atas')+'<button class="button secondary" type="button" data-batch="report">Baixar relatório CSV</button></div>'+
    '<p class="section-note" id="batch-message" role="status" aria-live="polite"></p><div id="batch-editor"></div><div class="table-scroll"><table class="batch-table"><thead><tr><th>Selecionar</th><th>Número / ano</th><th>Arquivo / título e disciplina</th><th>Data / curso(s)</th><th>Situação</th><th>Ações</th></tr></thead><tbody id="batch-rows"></tbody></table></div>'+
    '<div class="table-footer"><span id="batch-page"></span><div class="actions"><button class="button secondary" type="button" data-batch="prev">Anterior</button><button class="button secondary" type="button" data-batch="next">Próxima</button></div></div>'+
    '<div class="actions wrap batch-bottom"><label class="check"><input type="checkbox" id="batch-confirm"> Conferi os documentos e autorizo importar somente as atas selecionadas.</label><button class="button primary" type="button" data-batch="import">Importar selecionadas</button><button class="button secondary" type="button" data-batch="stop" hidden>Parar após o arquivo atual</button></div>'+
@@ -24,7 +29,7 @@ export function createHistoricalBatch({app,state,rpc,archive,notify,onImported})
   const reasons=r=>[...issues(r),...(r.fileError?[r.fileError]:[]),...(r.servidor&&r.servidor!=='livre'?[serverLabels[r.servidor]||'Conferência do acervo pendente.']:[]),...(!r.servidor?['Confira os dados e arquivos antes de importar.']:[])];
   const ready=r=>!r.resultado&&r.servidor==='livre'&&r.file&&!reasons(r).length;
   function render(){
-   const filter=d.querySelector('#batch-filter').value,filtered=rows.filter(r=>filter==='all'||filter==='sent'&&r.resultado==='importada'||filter==='ready'&&ready(r)||filter==='pending'&&r.resultado!=='importada'&&!ready(r));
+   const filtered=filterHistoricalBatchRows(rows,filters,ready);
    const pages=Math.max(1,Math.ceil(filtered.length/8));page=Math.min(page,pages-1);
    d.querySelector('#batch-rows').innerHTML=filtered.slice(page*8,page*8+8).map(r=>'<tr><td><input type="checkbox" data-select="'+r.linha+'" aria-label="Selecionar ata '+esc(r.numero)+'" '+(r.selecionada?'checked':'')+' '+(!ready(r)||busy?'disabled':'')+'></td><td>'+esc(Number.isFinite(r.numero)?r.numero:'Inválido')+'/'+esc(r.data_ata.slice(0,4)||'—')+'</td><td><strong>'+esc(r.titulo)+'</strong><div class="table-sub">'+esc(r.arquivo)+'</div></td><td>'+formatDate(r.data_ata)+'<div class="table-sub">'+esc(r.curso)+'</div></td><td>'+esc(r.resultado==='importada'?'Importada':r.resultado==='enviando'?'Enviando…':r.resultado==='conferir'?'Envio sem confirmação — confira o acervo':ready(r)?'Apta para importar':reasons(r).join(' '))+(r.erro?'<div class="error">'+esc(r.erro)+'</div>':'')+'</td><td><div class="actions wrap"><button class="text-button" type="button" data-edit="'+r.linha+'" '+(busy||r.resultado?'disabled':'')+'>Revisar</button>'+(r.file?'<button class="text-button" type="button" data-pdf="'+r.linha+'" '+(busy?'disabled':'')+'>Ver PDF</button>':'')+'</div></td></tr>').join('')||'<tr><td colspan="6">Nenhuma ata nesta seleção.</td></tr>';
    d.querySelector('#batch-page').textContent=rows.length+' atas · '+rows.filter(ready).length+' aptas · '+rows.filter(r=>r.resultado==='importada').length+' importadas · Página '+(page+1)+' de '+pages;
@@ -33,7 +38,8 @@ export function createHistoricalBatch({app,state,rpc,archive,notify,onImported})
    d.querySelector('[data-batch=check]').disabled=busy||!rows.length;
    d.querySelector('[data-batch=close]').disabled=busy;
    d.querySelector('[data-batch=stop]').hidden=!uploading;d.querySelector('[data-batch=stop]').disabled=stop;
-   d.querySelectorAll('.batch-setup input,.batch-setup select,#batch-filter,#batch-confirm').forEach(el=>el.disabled=busy);
+   d.querySelectorAll('.batch-setup input,.batch-setup select,#batch-confirm').forEach(el=>el.disabled=busy);
+   const control=d.querySelector('[data-filter-control="batch-status"]');control.inert=busy;if(busy)control.querySelector('details').open=false;
   }
   function invalidate(){for(const r of rows)if(!r.resultado){r.servidor=null;r.file=null;r.fileError='';r.selecionada=false;}d.querySelector('#batch-confirm').checked=false;render();}
   function loadSheet(){rows=parseHistoricalRows(sheets[Number(d.querySelector('#batch-sheet').value)].rows);page=0;d.querySelector('#batch-editor').replaceChildren();invalidate();message(rows.length+' atas lidas. Selecione a pasta e confira os dados.');}
@@ -62,7 +68,7 @@ export function createHistoricalBatch({app,state,rpc,archive,notify,onImported})
     }else if(e.target.id==='batch-sheet')loadSheet();
     else if(['batch-folder','batch-files'].includes(e.target.id)){files=Array.from(e.target.files||[]);invalidate();d.querySelector('#batch-source').textContent=files.length+' arquivos selecionados. Somente arquivos vinculados a linhas escolhidas serão enviados.';}
     else if(e.target.id==='batch-order')invalidate();
-    else if(e.target.id==='batch-filter'){page=0;render();}
+    else if(e.target.dataset.multiFilter==='batch-status'){filters=readMultiFilter(e.target).values;page=0;render();}
     else if(e.target.id==='batch-confirm')render();
     else if(e.target.dataset.select){const r=rows.find(r=>r.linha===Number(e.target.dataset.select));r.selecionada=e.target.checked&&ready(r);render();}
    }catch(error){message(error.message,true);}
