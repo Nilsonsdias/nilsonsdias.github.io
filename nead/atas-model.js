@@ -1,7 +1,7 @@
 import {historicalNumberLabel} from './historical-number.js?v=20261104-complemento-1';
 export const ataNumber=a=>historicalNumberLabel({...a,numero:String(a.numero).padStart(2,'0')})+'/'+(a.ano||String(a.data_ata).slice(0,4));
 export const ataTitle=a=>a.titulo||a.disciplina||'Ata de alinhamento';
-export const ataStatus=a=>a.tipo==='historica'?'Histórica — PDF final assinado':a.status_assinatura==='assinada'?'Assinada':a.status==='finalizada'?'Finalizada - aguardando PDF assinado':a.status==='registrada'?'Histórica':a.status;
+export const ataStatus=a=>a.tipo==='historica'?'Histórica — PDF final assinado':a.status_assinatura==='assinada'?(a.modalidade_assinatura==='codigo_email'?'Assinada e concluída':'Assinada'):a.status==='finalizada'?(a.modalidade_assinatura==='codigo_email'?'Finalizada — coleta de assinaturas':'Finalizada - aguardando PDF assinado'):a.status==='registrada'?'Histórica':a.status;
 export function ataFields(a){
  const d=a.dados_ata||{},people=a.contexto?.participantes||[];
  return {professores:d.professores??people.filter(p=>p.papel==='docente').map(p=>p.nome_completo),
@@ -21,4 +21,4 @@ export function ataPdfTitle(a){
 export function parseNames(value){return String(value||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);}
 
 export const canCreateAta=c=>c?.novas_liberadas===true||c?.concluida===true||c?.liberacao_temporaria===true;
-export const canAttachSignedPdf=a=>a?.tipo==='digital'&&a?.status==='finalizada';
+export const canAttachSignedPdf=a=>a?.tipo==='digital'&&a?.status==='finalizada'&&a?.modalidade_assinatura!=='codigo_email';

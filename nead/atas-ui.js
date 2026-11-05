@@ -4,7 +4,7 @@ import {createHistoricalBatch} from './atas-batch.js?v=20261104-complemento-1';
 import {guardAtaSession} from './ata-session.js';
 import {renderMultiFilter,readMultiFilter} from './multi-filter.js?v=20261103-filtros-1';
 import {escapeHtml as esc,formatDate} from './model.js?v=20261027-atas-4';
-import {ataNumber,ataTitle,ataStatus,ataFields,parseNames,canCreateAta,canAttachSignedPdf} from './atas-model.js?v=20261104-complemento-1';
+import {ataNumber,ataTitle,ataStatus,ataFields,ataParticipants,parseNames,canCreateAta,canAttachSignedPdf} from './atas-model.js?v=20261105-assinaturas-1';
 const btn=(label,action)=>'<button type="button" class="button secondary" data-ata-action="'+action+'">'+label+'</button>';
 const names=(label,key,value,readonly=false)=>'<label class="field">'+label+'<textarea name="'+key+'" rows="3" '+(readonly?'readonly':'')+' placeholder="Um nome por linha">'+esc((value||[]).join('\n'))+'</textarea></label>';
 function fields(d,readonly=false,category='alinhamento'){
@@ -49,7 +49,7 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
   (a.documento_assinado_id?btn('Visualizar PDF assinado','signed-view'):'')+
   (writable()&&canAttachSignedPdf(a)?btn(a.documento_assinado_id?'Substituir PDF assinado':'Anexar PDF assinado','signed-upload'):'')+
   (edit?btn('Salvar rascunho','save')+btn('Finalizar ata','finalize'):'')+(admin()?btn('Excluir ata','delete'):'')+'</div></div>'+
-  (!edit?'<div class="notice">'+(a.tipo==='historica'?'O PDF histórico importado é o arquivo final assinado. Ele está preservado e não exige outro anexo de assinatura. Use Visualizar PDF original para consultar na tela.':'Conteúdo finalizado e preservado. Anexe o PDF assinado para registrar a assinatura.')+'</div>':'')+
+  (!edit?'<div class="notice">'+(a.tipo==='historica'?'O PDF histórico importado é o arquivo final assinado. Ele está preservado e não exige outro anexo de assinatura. Use Visualizar PDF original para consultar na tela.':a.modalidade_assinatura==='codigo_email'?'Conteúdo finalizado. Acompanhe abaixo a coleta das assinaturas eletrônicas.':'Conteúdo finalizado e preservado. Anexe o PDF assinado para registrar a assinatura.')+'</div>':'')+
   '<form id="atas-editor"><div class="editor-grid"><div><section class="panel panel-body"><h2>Identificação</h2><p>'+esc(ataNumber(a))+' · '+formatDate(a.data_ata)+' · '+(a.categoria==='administrativa'?'Administrativa':'Alinhamento')+'</p>'+
   (a.disciplina?'<p>Disciplina: '+esc(a.disciplina)+(a.ordem_disciplina?' · Ordem '+esc(ordemOf(a)):'')+'</p>':'')+'</section>'+
   (a.tipo==='historica'?'':'<section class="panel panel-body"><div class="actions wrap" style="justify-content:space-between"><label class="field" for="atas-texto">Texto da ata</label>'+(canUseStandardText(a,writable())?btn('Usar texto padrão','standard-text'):'')+'</div><textarea id="atas-texto" name="texto" class="editor-text" '+(edit?'':'readonly')+'>'+esc(state.text)+'</textarea><p id="atas-dirty">'+(state.dirty?'Alterações não salvas':'Conteúdo salvo')+'</p></section>')+
@@ -57,8 +57,9 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
   (edit?'<label class="field">Foto da reunião<input type="file" id="atas-photo" accept="image/jpeg,image/png,image/webp"></label>'+(photo?btn('Remover foto','photo-remove'):''):'')+
   '<label class="field">Legenda<input name="legenda" maxlength="500" value="'+esc(legenda)+'" '+(edit?'':'readonly')+'></label></section></div>'+
   '<aside><section class="panel panel-body"><h3>Curso e participantes</h3>'+fields(draft,!edit,a.categoria)+'<p class="section-note">Nomes e curso pertencem a esta ata; não alteram Pessoas e Ofertas.</p></section>'+
-  '<section class="panel panel-body"><h3>Assinatura</h3><p>'+esc(a.tipo==='historica'?'PDF histórico final assinado':a.status_assinatura==='assinada'?'Assinada':a.status==='rascunho'?'Não iniciada':'Aguardando PDF assinado')+'</p><p class="revision">Revisão '+a.revisao+'. Histórico preservado.</p></section>'+
+  '<section class="panel panel-body" id="assinaturas-painel"><h3>Assinatura</h3><p>'+esc(a.tipo==='historica'?'PDF histórico final assinado':a.status_assinatura==='assinada'?'Assinada':a.status==='rascunho'?'Não iniciada':'Aguardando PDF assinado')+'</p><p class="revision">Revisão '+a.revisao+'. Histórico preservado.</p></section>'+
   '</aside></div></form>';
+  if(a.modalidade_assinatura==='codigo_email')loadSignatures(a);
  }
  function render(main){
   if(state.view==='editor'){editor(main);return true;}
@@ -70,10 +71,42 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
   (state.view==='overview'?'<section class="stats" aria-label="Resumo do acervo">'+[['Total de atas',state.summary?.total],['Em elaboração',state.summary?.rascunhos],['Aguardando assinatura',state.summary?.aguardando_assinatura],['Acervo histórico',state.summary?.historicas]].map(([label,value])=>'<article class="stat"><div class="stat-top">'+label+'</div><div class="stat-value">'+(value??'—')+'</div></article>').join('')+'</section>':'')+
   (signatures?'<div class="notice">Para atas geradas no sistema: finalize a ata, gere o PDF e anexe o arquivo assinado manualmente ou por serviço externo. Atas históricas já possuem o PDF final e não entram nesta etapa. O envio não faz validação criptográfica.</div>':'')+
   '<section class="panel"><div class="list-toolbar"><input id="atas-search" type="search" class="filter-input" placeholder="Buscar número, título ou curso" aria-label="Buscar atas" value="'+esc(state.filter||'')+'">'+renderMultiFilter('atas-status','Situação',{rascunho:'Rascunho',finalizada:'Finalizada',registrada:'Histórica',assinada:'Assinada'},state.status,'Todas as situações')+btn('Limpar filtros','clear-filters')+'</div><div id="atas-results"></div><div class="table-footer">'+(state.hasMore?btn('Carregar mais','more'):'')+'</div></section>';
-  const base=state.records.filter(a=>(!historical||a.tipo==='historica')&&(!signatures||canAttachSignedPdf(a)));
+  const base=state.records.filter(a=>(!historical||a.tipo==='historica')&&(!signatures||canAttachSignedPdf(a)||a.modalidade_assinatura==='codigo_email'&&a.status==='finalizada'));
   const update=q=>{state.filter=q;const norm=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR');document.querySelector('#atas-results').innerHTML=table(base.filter(a=>(!Array.isArray(state.status)||!state.status.length||state.status.includes(a.status)||a.status_assinatura==='assinada'&&state.status.includes('assinada'))&&norm([ataNumber(a),ataTitle(a),ataFields(a).curso].join(' ')).includes(norm(q))));};
   document.querySelector('#atas-search').addEventListener('input',e=>update(e.target.value));document.querySelectorAll('[data-multi-filter="atas-status"]').forEach(el=>el.addEventListener('change',e=>{state.status=readMultiFilter(e.target).values;update(state.filter||'');}));update(state.filter||'');return true;
  }
+
+ async function signature(body){
+  const {data,error}=await invoke('nead-assinaturas',{body});
+  if(error){let text='Operação de assinatura não confirmada.';try{text=(await error.context.json()).error||text;}catch{}throw Error(text);}return data;
+ }
+ async function loadSignatures(a){
+  const holder=document.querySelector('#assinaturas-painel');if(!holder)return;
+  if(a.status==='rascunho'){holder.innerHTML='<h3>Assinatura eletrônica</h3><p>Ao finalizar, confira o e-mail de cada participante. Todos receberão um convite para assinar por código de e-mail, sem conta no portal.</p>';return;}
+  holder.innerHTML='<h3>Assinaturas</h3><p>Carregando situação…</p>';
+  try{const e=await rpc('nead_assinaturas',{p_ata:a.id});if(state.current?.id!==a.id||!holder.isConnected)return;
+   if(!e)throw Error('Solicitação ainda não disponível.');
+   if(e.estado==='concluido'&&state.current.status_assinatura!=='assinada'){const updated=await rpc('nead_obter_ata',{p_ata:a.id});if(state.current?.id===a.id){state.current=updated;state.text=updated.texto;renderView();}return;}
+   const done=e.signatarios.filter(s=>s.assinado_em).length;
+   holder.innerHTML='<h3>Assinaturas: '+done+' de '+e.signatarios.length+'</h3><p>'+esc(({preparando:'Preparando PDF e convites',aguardando:'Aguardando assinaturas',pdf_pendente:'Assinaturas coletadas — preparando PDF final',concluido:'Assinada e concluída',revogado:'Solicitação revogada'})[e.estado])+'</p>'+e.signatarios.map(s=>'<div class="signer-status"><strong>'+esc(s.nome)+'</strong><p>'+esc(s.email)+'</p><p>'+esc(s.assinado_em?'Assinou em '+new Date(s.assinado_em).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}):'Pendente')+'</p><p>Convite: '+esc(s.convite||'aguardando PDF')+(e.estado==='concluido'?' · Cópia final: '+esc(s.copia_final||'pendente'):'')+'</p>'+(writable()&&!s.assinado_em&&e.estado==='aguardando'?'<div class="actions wrap">'+['copiar','reenviar','renovar','corrigir_email'].map(k=>'<button type="button" class="text-button" data-ata-action="sign-'+k+'" data-signer="'+s.id+'">'+({copiar:'Copiar link',reenviar:'Reenviar convite',renovar:'Renovar link',corrigir_email:'Corrigir e-mail'})[k]+'</button>').join('')+'</div>':'')+(writable()&&(s.convite==='incerto'||s.copia_final==='incerto')?'<button type="button" class="text-button" data-ata-action="sign-reprocessar" data-signer="'+s.id+'">Conferir/reprocessar envio não confirmado</button>':'')+'</div>').join('')+btn('Atualizar assinaturas','sign-refresh')+(writable()&&(['preparando','pdf_pendente'].includes(e.estado)||e.signatarios.some(s=>s.convite==='pendente'||s.copia_final==='pendente'))?btn('Processar pendências','sign-processar'):'')+(e.estado!=='preparando'&&e.estado!=='revogado'?btn(e.estado==='concluido'?'Baixar PDF final':'Baixar PDF para assinatura','sign-pdf'):'');
+  }catch(error){if(holder.isConnected)holder.innerHTML='<h3>Assinaturas</h3><p>'+esc(error.message)+'</p>'+btn('Atualizar assinaturas','sign-refresh');}
+ }
+ async function signatureForm(){
+  sync();const people=ataParticipants({...state.current,dados_ata:draft});const signers=[...new Map(people.map(p=>[p.nome,{nome:p.nome,papel:people.filter(x=>x.nome===p.nome).map(x=>x.papel).join(' / ')}])).values()];
+  if(!signers.length)throw Error('Informe os participantes antes de finalizar.');
+  const d=dialog('<h2>Conferir signatários</h2><p>Confira os e-mails. Após finalizar, o texto e os destinatários ficarão preservados. Cada participante receberá um convite individual; após todas as assinaturas, receberá também o PDF final.</p><form id="signers-finalize">'+signers.map((s,i)=>'<label class="field"><strong>'+esc(s.nome)+'</strong><span>'+esc(s.papel)+'</span><input type="email" name="email_'+i+'" autocomplete="off" required maxlength="254" aria-label="E-mail de '+esc(s.nome)+'"></label>').join('')+'<p class="form-message error" role="alert"></p><div class="actions"><button type="submit" class="button primary">Finalizar e solicitar assinaturas</button>'+btn('Cancelar','close')+'</div></form>');
+  if(state.permissions?.pessoas&&state.permissions.pessoas!=='negado')try{const list=await rpc('nead_consultar',{p_modulo:'pessoas'});if(d.open)signers.forEach((s,i)=>{const matches=list.filter(p=>p.ativo&&p.nome_completo?.trim().toLocaleLowerCase('pt-BR')===s.nome.trim().toLocaleLowerCase('pt-BR'));if(matches.length===1)d.querySelector('[name=email_'+i+']').value=matches[0].email||'';});}catch{}
+  d.querySelector('form').addEventListener('submit',async event=>{
+   event.preventDefault();event.stopImmediatePropagation();if(working)return;
+   const b=d.querySelector('[type=submit]');working=true;state.busy=true;b.disabled=true;
+   try{const values=new FormData(event.target),payload=signers.map((s,i)=>({...s,email:String(values.get('email_'+i)||'').trim()}));
+    await rpc('nead_finalizar_assinaturas',{p_ata:state.current.id,p_revisao:state.current.revisao,p_texto:state.text,p_dados:draft,p_signatarios:payload});
+    const id=state.current.id;state.current=await rpc('nead_obter_ata',{p_ata:id});state.text=state.current.texto;state.dirty=false;draftId=null;close();renderView();notify('Ata finalizada. PDF e convites na fila de processamento.');
+    try{await signature({acao:'processar',ata_id:id});if(state.current?.id===id)await loadSignatures(state.current);}catch{notify('Ata preservada; processamento pendente. Confira o painel de assinaturas.',true);}
+   }catch(error){if(d.open)d.querySelector('[role=alert]').textContent=error.message;}finally{working=false;state.busy=false;if(b.isConnected)b.disabled=false;}
+  });
+ }
+
  function sync(){
   const f=document.querySelector('#atas-editor');if(!f||!canEdit())return;
   const data=new FormData(f);draft={...readFields(data),foto:photo,legenda:String(data.get('legenda')||'')};legenda=draft.legenda;state.text=String(data.get('texto')||'');
@@ -149,6 +182,22 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
    if(!canAttachSignedPdf(state.current)){fail(Error('O anexo de assinatura é exclusivo das atas geradas e finalizadas no sistema.'));return;}
    dialog('<h2>Anexar PDF assinado — '+esc(ataNumber(state.current))+'</h2><p>Selecione a ata já assinada manualmente ou por serviço externo. O original e as versões anteriores serão preservados.</p><form id="atas-signed"><label class="field">PDF assinado (até 20 MB)<input name="arquivo" type="file" accept="application/pdf,.pdf" required></label><input type="hidden" name="acao" value="assinado"><input type="hidden" name="ata_id" value="'+state.current.id+'"><input type="hidden" name="revisao" value="'+state.current.revisao+'"><p class="section-note">A indicação Assinada registra o recebimento; não é validação criptográfica.</p><p class="form-message error" role="alert"></p><div class="actions"><button class="button primary" type="submit">Registrar PDF assinado</button>'+btn('Cancelar','close')+'</div></form>');return;
   }
+  if(action==='finalize'&&state.current.modalidade_assinatura==='codigo_email'){try{await signatureForm();}catch(error){fail(error);}return;}
+  if(action.startsWith('sign-')){
+   if(working)return;working=true;el.disabled=true;
+   try{
+    const actionName=action.slice(5),id=state.current.id;
+    if(actionName==='corrigir_email'){
+     const signerId=el.dataset.signer,d=dialog('<h2>Corrigir e-mail do signatário</h2><p>O link e os códigos anteriores serão revogados. O novo convite será enviado ao endereço informado. A alteração ficará registrada na auditoria; o cadastro de Pessoas não será alterado.</p><form id="signature-email-fix"><label class="field">Novo e-mail<input type="email" name="email" required maxlength="254"></label><p role="alert" class="form-message error"></p><button type="submit" class="button primary">Corrigir e enviar novo convite</button>'+btn('Cancelar','close')+'</form>');
+     d.querySelector('form').addEventListener('submit',async event=>{event.preventDefault();event.stopImmediatePropagation();if(working)return;working=true;const b=event.target.querySelector('[type=submit]');b.disabled=true;try{await signature({acao:'corrigir_email',ata_id:id,signatario_id:signerId,email:new FormData(event.target).get('email')});close();await loadSignatures(state.current);notify('E-mail corrigido e novo convite solicitado.');}catch(error){d.querySelector('[role=alert]').textContent=error.message;}finally{working=false;if(b.isConnected)b.disabled=false;}});return;
+    }
+    if(actionName==='refresh'){await loadSignatures(state.current);return;}
+    if(actionName==='pdf'){const bytes=await signature({acao:'documento_admin',ata_id:id});const blob=bytes instanceof Blob?bytes:new Blob([bytes],{type:'application/pdf'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='Ata-'+ataNumber(state.current).replace('/','-')+'-assinatura.pdf';a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);return;}
+    if(['reenviar','renovar','reprocessar'].includes(actionName)&&!confirm(actionName==='renovar'?'Revogar o link anterior e enviar um novo convite?':'Confirmar envio para este signatário? Em caso de envio anterior incerto, confira a caixa de enviados institucional antes de repetir.'))return;
+    const r=await signature({acao:actionName,ata_id:id,signatario_id:el.dataset.signer});
+    if(actionName==='copiar'){try{await navigator.clipboard.writeText(r.link);notify('Link individual copiado.');}catch{dialog('<h2>Link individual de assinatura</h2><p>O destinatário precisará do código enviado ao seu e-mail.</p><label class="field">Copie o link<input readonly value="'+esc(r.link)+'"></label>'+btn('Fechar','close'));}}else{notify('Solicitação processada. Confira o resultado por signatário.');await loadSignatures(state.current);}
+   }catch(error){fail(error);}finally{working=false;if(el.isConnected)el.disabled=false;}return;
+  }
   if(action==='finalize'&&!confirm('Conferiu identificação, participantes e texto? Após finalizar o conteúdo ficará bloqueado.'))return;
   working=true;state.busy=true;el.disabled=true;
   try{
@@ -162,8 +211,8 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
     await rpc('nead_excluir_ata',{p_ata:state.current.id,p_revisao:state.current.revisao,p_motivo:motivo});state.dirty=false;state.current=null;state.view='records';await loadData();notify('Ata excluída da listagem. Histórico e arquivos preservados.');
    }else if(action==='pdf'||action==='download'||action==='original'||action==='signed-view'){
     if(state.dirty)throw Error('Salve o rascunho antes de gerar o PDF.');
-    const bytes=action==='pdf'?await(await import('./ata-pdf.js?v=20261027-atas-4')).generateAtaPdf(state.current):await archive({ata_id:state.current.id,assinado:action==='signed-view'});
-    const blob=new Blob([bytes],{type:'application/pdf'}),url=URL.createObjectURL(blob);urls.add(url);
+    const bytes=action==='pdf'?(state.current.modalidade_assinatura==='codigo_email'&&state.current.status==='finalizada'?await signature({acao:'documento_admin',ata_id:state.current.id}):await(await import('./ata-pdf.js?v=20261027-atas-4')).generateAtaPdf(state.current)):await archive({ata_id:state.current.id,assinado:action==='signed-view'});
+    const blob=bytes instanceof Blob?bytes:new Blob([bytes],{type:'application/pdf'}),url=URL.createObjectURL(blob);urls.add(url);
     if(action==='original'||action==='signed-view'){
      const d=dialog('<div class="actions"><h2>PDF da ata '+esc(ataNumber(state.current))+'</h2>'+btn('Fechar','close')+'</div><div class="ata-pdf-pages"></div><a class="button secondary">Baixar PDF</a>');d.classList.add('ata-viewer');
      d.querySelector('.ata-pdf-pages').dataset.blobUrl=url;const {mountPdfViewer}=await import('./pdf-viewer.js?v=20261027-atas-5');if(!d.open)return;await mountPdfViewer(d.querySelector('.ata-pdf-pages'),blob);const link=d.querySelector('a');link.href=url;link.download='Ata-'+ataNumber(state.current).replace('/','-')+'.pdf';
