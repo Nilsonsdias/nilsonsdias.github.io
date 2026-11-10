@@ -1,10 +1,10 @@
-import {completeAtaList} from './atas-list.js?v=20261110-consulta-1';
+import {completeAtaList} from './atas-list.js?v=20261110-consulta-2';
 import {dashboardNavigation,renderDashboards} from './dashboards.js?v=20261104-dashboards-1';
 import {ordemOf} from './ordem.js?v=20261103-multiplas-1';
 import {displayTurma} from './turma.js?v=20261103-turma-1';
-import {installAtas} from './atas-ui.js?v=20261110-consulta-1';
+import {installAtas} from './atas-ui.js?v=20261110-consulta-2';
 import {renderMultiFilter,readMultiFilter,installMultiFilterDismiss} from './multi-filter.js?v=20261103-filtros-1';
-import {navigationGroups} from './nead-logic.js?v=20261110-consulta-1';
+import {navigationGroups} from './nead-logic.js?v=20261110-consulta-2';
 import {installNead,modules,roles} from './nead.js?v=20261104-pessoa-status-1';
 import { createClient } from './vendor/supabase.js';
 import { config } from './config.js';

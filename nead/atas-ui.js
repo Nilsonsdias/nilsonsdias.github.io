@@ -1,4 +1,4 @@
-import {ataType,ataFilterChoices,filterAtaList} from './atas-list.js?v=20261110-consulta-1';
+import {ataType,ataFilterChoices,filterAtaList} from './atas-list.js?v=20261110-consulta-2';
 import {ordemOf} from './ordem.js?v=20261103-multiplas-1';
 import {canUseStandardText,standardTextDecision} from './ata-standard-text.js?v=20261030-padrao-1';
 import {createHistoricalBatch} from './atas-batch.js?v=20261104-complemento-1';

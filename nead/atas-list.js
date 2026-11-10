@@ -4,7 +4,7 @@ export const ataType=a=>a.tipo==='historica'?'Histórica':'Regular';
 export const ataYear=a=>String(a.ano||String(a.data_ata||'').slice(0,4));
 export function ataCourses(a){
  const course=ataFields(a).curso;
- return [...new Set([...String(course||'').split(/\s+\/\s+/),...(a.dados_ata?.curso!=null?[]:(a.contexto?.ofertas||[]).map(o=>o.curso))].map(s=>String(s||'').trim()).filter(Boolean))];
+ return [...new Set([...String(course||'').split(/\s*[,;]\s*|\s+\/\s+/),...(a.dados_ata?.curso!=null?[]:(a.contexto?.ofertas||[]).map(o=>o.curso))].map(s=>String(s||'').trim()).filter(Boolean))];
 }
 export function ataFilterChoices(records){
  const choices=values=>Object.fromEntries([...new Set(values.filter(Boolean))].map(value=>[value,value]));
