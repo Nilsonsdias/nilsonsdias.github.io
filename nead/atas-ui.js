@@ -1,3 +1,4 @@
+import {ataType,ataFilterChoices,filterAtaList} from './atas-list.js?v=20261110-consulta-1';
 import {ordemOf} from './ordem.js?v=20261103-multiplas-1';
 import {canUseStandardText,standardTextDecision} from './ata-standard-text.js?v=20261030-padrao-1';
 import {createHistoricalBatch} from './atas-batch.js?v=20261104-complemento-1';
@@ -37,8 +38,8 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
   return '<div class="notice"><div><strong>Numeração anual liberada</strong><p>'+reservas+' A importação histórica pode ser feita a qualquer tempo. Nos demais anos, a sequência inicia em 1.</p></div></div>';
  }
  function table(records){
-  return '<div class="table-scroll"><table><thead><tr><th>Número / ano</th><th>Título / curso</th><th>Data</th><th>Situação</th><th>Ação</th></tr></thead><tbody>'+
-  records.map(a=>'<tr><td class="number">'+esc(ataNumber(a))+'</td><td><strong>'+esc(ataTitle(a))+'</strong><div class="table-sub">'+esc(ataFields(a).curso)+'</div></td><td>'+formatDate(a.data_ata)+'</td><td>'+esc(ataStatus(a))+'</td><td><button class="row-open" data-ata-action="open" data-id="'+esc(a.id)+'">Abrir →</button></td></tr>').join('')+
+  return '<div class="table-scroll"><table><thead><tr><th>Número / ano</th><th>Tipo</th><th>Título / curso</th><th>Data</th><th>Situação</th><th>Ação</th></tr></thead><tbody>'+
+  records.map(a=>'<tr><td class="number">'+esc(ataNumber(a))+'</td><td>'+ataType(a)+'</td><td><strong>'+esc(ataTitle(a))+'</strong><div class="table-sub">'+esc(ataFields(a).curso)+'</div></td><td>'+formatDate(a.data_ata)+'</td><td>'+esc(ataStatus(a))+'</td><td><button class="row-open" data-ata-action="open" data-id="'+esc(a.id)+'">Abrir →</button></td></tr>').join('')+
   '</tbody></table></div>'+(records.length?'':'<p class="panel-body">Nenhuma ata encontrada.</p>');
  }
  function editor(main){
@@ -64,16 +65,19 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
  function render(main){
   if(state.view==='editor'){editor(main);return true;}
   if(!['overview','records','historical','signatures'].includes(state.view))return false;
-  const historical=state.view==='historical',signatures=state.view==='signatures';
-  const heading=historical?'Atas históricas':signatures?'Assinaturas':'Gestão de atas';
+  const signatures=state.view==='signatures';
+  const choices=ataFilterChoices(state.records);
+  const heading=signatures?'Assinaturas':state.view==='overview'?'Gestão de atas':'Atas Registradas';
   main.innerHTML='<div class="page-heading"><div><span class="eyebrow">ACERVO NEAD</span><h1>'+heading+'</h1><p>Atas de alinhamento e administrativas em uma única sequência anual.</p></div><div class="actions">'+
-  (writable()?(historical?btn('Importar PDF original','import')+btn('Importação em lote','batch'):btn('Nova ata avulsa','new')):'')+btn('Atualizar','reload')+'</div></div>'+carga()+
+  (writable()?btn('Nova ata avulsa','new')+btn('Importar PDF original','import')+btn('Importação em lote','batch'):'')+btn('Atualizar','reload')+'</div></div>'+carga()+
   (state.view==='overview'?'<section class="stats" aria-label="Resumo do acervo">'+[['Total de atas',state.summary?.total],['Em elaboração',state.summary?.rascunhos],['Aguardando assinatura',state.summary?.aguardando_assinatura],['Acervo histórico',state.summary?.historicas]].map(([label,value])=>'<article class="stat"><div class="stat-top">'+label+'</div><div class="stat-value">'+(value??'—')+'</div></article>').join('')+'</section>':'')+
   (signatures?'<div class="notice">Nas novas atas, acompanhe a assinatura por código de e-mail. Após todas as assinaturas, o PDF final com auditoria será enviado aos signatários. As atas anteriores mantêm o anexo de PDF assinado; atas históricas já possuem o arquivo final.</div>':'')+
-  '<section class="panel"><div class="list-toolbar"><input id="atas-search" type="search" class="filter-input" placeholder="Buscar número, título ou curso" aria-label="Buscar atas" value="'+esc(state.filter||'')+'">'+renderMultiFilter('atas-status','Situação',{rascunho:'Rascunho',finalizada:'Finalizada',registrada:'Histórica',assinada:'Assinada'},state.status,'Todas as situações')+btn('Limpar filtros','clear-filters')+'</div><div id="atas-results"></div><div class="table-footer">'+(state.hasMore?btn('Carregar mais','more'):'')+'</div></section>';
-  const base=state.records.filter(a=>(!historical||a.tipo==='historica')&&(!signatures||canAttachSignedPdf(a)||a.modalidade_assinatura==='codigo_email'&&a.status==='finalizada'));
-  const update=q=>{state.filter=q;const norm=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR');document.querySelector('#atas-results').innerHTML=table(base.filter(a=>(!Array.isArray(state.status)||!state.status.length||state.status.includes(a.status)||a.status_assinatura==='assinada'&&state.status.includes('assinada'))&&norm([ataNumber(a),ataTitle(a),ataFields(a).curso].join(' ')).includes(norm(q))));};
-  document.querySelector('#atas-search').addEventListener('input',e=>update(e.target.value));document.querySelectorAll('[data-multi-filter="atas-status"]').forEach(el=>el.addEventListener('change',e=>{state.status=readMultiFilter(e.target).values;update(state.filter||'');}));update(state.filter||'');return true;
+  '<section class="panel"><div class="list-toolbar wrap"><input id="atas-search" type="search" class="filter-input" placeholder="Buscar número, título ou curso" aria-label="Buscar atas" value="'+esc(state.filter||'')+'">'+renderMultiFilter('atas-status','Situação',{rascunho:'Rascunho',finalizada:'Finalizada',registrada:'Histórica',assinada:'Assinada'},state.status,'Todas as situações')+renderMultiFilter('atas-type','Tipo',{historica:'Histórica',regular:'Regular'},state.ataTypes,'Todos os tipos')+renderMultiFilter('atas-course','Curso',choices.courses,state.ataCourses,'Todos os cursos')+renderMultiFilter('atas-year','Ano',choices.years,state.ataYears,'Todos os anos',{type:'number'})+btn('Limpar filtros','clear-filters')+'</div><div id="atas-results"></div><div class="table-footer"><span id="atas-count"></span>'+(state.hasMore?btn('Carregar mais','more'):'')+'</div></section>';
+  const base=state.records.filter(a=>(!signatures||canAttachSignedPdf(a)||a.modalidade_assinatura==='codigo_email'&&a.status==='finalizada'));
+  const update=()=>{const records=filterAtaList(base,{query:state.filter,status:state.status,types:state.ataTypes,courses:state.ataCourses,years:state.ataYears});document.querySelector('#atas-results').innerHTML=table(records);document.querySelector('#atas-count').textContent=records.length+' resultado(s) · '+base.length+' ata(s) no acervo';};
+  document.querySelector('#atas-search').addEventListener('input',e=>{state.filter=e.target.value;update();});
+  const filterState={'atas-status':'status','atas-type':'ataTypes','atas-course':'ataCourses','atas-year':'ataYears'};
+  document.querySelectorAll('[data-multi-filter^="atas-"]').forEach(el=>el.addEventListener('change',e=>{const selection=readMultiFilter(e.target);state[filterState[selection.key]]=selection.values;update();}));update();return true;
  }
 
  async function signature(body){
@@ -167,7 +171,7 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
    const textarea=document.querySelector('#atas-editor [name=texto]');if(!textarea)return;
    textarea.value=result.text;sync();if(action==='standard-text-confirm')close();textarea.focus();notify('Texto padrão inserido. Edite os marcadores e salve o rascunho.');return;
   }
-  if(action==='clear-filters'){state.filter='';state.status=[];renderView();return;}
+  if(action==='clear-filters'){state.filter='';state.status=[];state.ataTypes=[];state.ataCourses=[];state.ataYears=[];renderView();return;}
   if(action==='open'){draftId=null;return openRecord(el.dataset.id);}
   if(action==='back'){if(state.dirty&&!confirm('Descartar alterações não salvas?'))return;state.dirty=false;state.current=null;state.view='records';return loadData();}
   if(action==='reload'){if(state.dirty&&!confirm('Descartar alterações não salvas?'))return;return loadData();}

@@ -1,9 +1,10 @@
+import {completeAtaList} from './atas-list.js?v=20261110-consulta-1';
 import {dashboardNavigation,renderDashboards} from './dashboards.js?v=20261104-dashboards-1';
 import {ordemOf} from './ordem.js?v=20261103-multiplas-1';
 import {displayTurma} from './turma.js?v=20261103-turma-1';
-import {installAtas} from './atas-ui.js?v=20261105-assinaturas-3';
+import {installAtas} from './atas-ui.js?v=20261110-consulta-1';
 import {renderMultiFilter,readMultiFilter,installMultiFilterDismiss} from './multi-filter.js?v=20261103-filtros-1';
-import {navigationGroups} from './nead-logic.js?v=20261103-multiplas-1';
+import {navigationGroups} from './nead-logic.js?v=20261110-consulta-1';
 import {installNead,modules,roles} from './nead.js?v=20261104-pessoa-status-1';
 import { createClient } from './vendor/supabase.js';
 import { config } from './config.js';
@@ -93,11 +94,13 @@ async function loadData(append=false){
     const params={p_limite:100,p_ano:append?state.records.at(-1)?.ano??null:null,p_numero:append?state.records.at(-1)?.numero??null:null,p_complemento:append?state.records.at(-1)?.numero_complemento??0:null};
     const [records,summary,alignments,carga]=state.permissions?.atas!=='negado'?await Promise.all([rpc('nead_listar_atas_v3',params),rpc('nead_resumo_atas'),rpc('nead_listar_alinhamentos'),rpc('nead_situacao_carga_atas')]):[[],{},[],null];
     if(currentEpoch!==epoch)return;
-    state.records=append?[...new Map([...state.records,...records].map(a=>[a.id,a])).values()]:records;
-    state.carga=carga;state.hasMore=records.length===100;state.summary=summary;state.alignments=alignments;renderView();
+    const complete=await completeAtaList(records,p=>rpc('nead_listar_atas_v3',p),()=>currentEpoch===epoch);
+    if(currentEpoch!==epoch)return;
+    state.records=append?[...new Map([...state.records,...complete].map(a=>[a.id,a])).values()]:complete;
+    state.carga=carga;state.hasMore=false;state.summary=summary;state.alignments=alignments;renderView();
   }catch(error){if(currentEpoch!==epoch)return;if(error.code==='42501'){state.profile=null;state.records=[];renderGate(errorMessage(error));return;}document.querySelector('#main').innerHTML=`<section class="panel">${empty('Não foi possível carregar o acervo',esc(errorMessage(error)),'reload','Tentar novamente')}</section>`;}
 }
-async function navigate(view){if(!canLeave())return;state.dirty=false;state.current=null;state.view=view;state.filter='';state.status='';renderView();window.scrollTo(0,0);}
+async function navigate(view){if(!canLeave())return;state.dirty=false;state.current=null;state.view=view==='historical'?'records':view;state.filter='';state.status='';state.ataTypes=[];state.ataCourses=[];state.ataYears=[];renderView();window.scrollTo(0,0);}
 async function openRecord(id){
   if(!canLeave())return;
   const currentEpoch=epoch;
