@@ -59,3 +59,14 @@
 @media(max-width:700px){.dashboard-report-heading{flex-wrap:wrap;padding:12px}.dashboard-frame{min-height:500px}.dashboard-view .actions{width:100%}.dashboard-view .actions>.button{flex:1;justify-content:center;text-align:center}.dashboard-access{overflow-wrap:anywhere}}
 
 .signature-public{max-width:1060px;margin:40px auto;padding:0 20px}.signature-public h1{margin:12px 0}.signature-public .panel{margin-top:24px}.signature-public .revision{overflow-wrap:anywhere}.signer-status{padding:12px 0;border-bottom:1px solid var(--line)}.signer-status p{font-size:12px;overflow-wrap:anywhere}.signature-public #signature-pdf{margin:20px 0;max-height:70vh;overflow:auto}.signature-public [type=checkbox]{width:auto}
+
+/* Marcadores do modelo: camada visual sobre textarea nativa, sem HTML persistido. */
+.ata-marker-editor{position:relative;background:#fff;isolation:isolate}
+.ata-marker-layer,.ata-marker-editor>.editor-text{font-family:inherit;font-size:13px;font-weight:400;line-height:1.95;letter-spacing:normal;word-spacing:normal;tab-size:8;padding:25px;text-align:start;text-indent:0;white-space:pre-wrap;overflow-wrap:break-word;word-break:normal}
+.ata-marker-layer{position:absolute;top:0;left:0;margin:0;border:0;overflow:hidden;pointer-events:none;color:var(--ink);z-index:0}
+.ata-marker-layer .ata-placeholder{color:#b42318}
+.ata-marker-editor>.ata-marked-input{position:relative;z-index:1;color:transparent;-webkit-text-fill-color:transparent;caret-color:var(--ink);background:transparent}
+.ata-marked-input::selection{color:var(--ink);-webkit-text-fill-color:var(--ink);background:#cce6e4}
+@media(max-width:600px){.ata-marker-layer,.ata-marker-editor>.editor-text{padding:18px}}
+@media(forced-colors:active){.ata-marker-layer{display:none}.ata-marker-editor>.ata-marked-input{color:CanvasText;-webkit-text-fill-color:CanvasText;caret-color:CanvasText}}
+@media print{.ata-marker-layer{display:none}}

@@ -1,3 +1,4 @@
+import {installStandardMarkerHighlight} from './ata-text-highlight.js?v=20261111-marcadores-1';
 import {ataType,ataFilterChoices,filterAtaList} from './atas-list.js?v=20261110-consulta-2';
 import {ordemOf} from './ordem.js?v=20261103-multiplas-1';
 import {canUseStandardText,standardTextDecision} from './ata-standard-text.js?v=20261030-padrao-1';
@@ -16,7 +17,7 @@ function fields(d,readonly=false,category='alinhamento'){
 const readFields=f=>({curso:String(f.get('curso')||''),professores:parseNames(f.get('professores')),mediadores:parseNames(f.get('mediadores')),participantes:parseNames(f.get('participantes'))});
 export function installAtas({app,state,rpc,client,notify,renderView,loadData,openRecord}){
  const rawRpc=rpc;rpc=(...args)=>guardAtaSession(state,()=>rawRpc(...args));const invoke=(...args)=>guardAtaSession(state,()=>client.functions.invoke(...args));
- let draftRevision=null,draft=null,draftId=null,photo='',legenda='',urls=new Set(),working=false;
+ let draftRevision=null,draft=null,draftId=null,photo='',legenda='',urls=new Set(),working=false,textHighlight=null;
  const admin=()=>state.profile?.perfil==='administrador';
  const writable=()=>state.profile?.pode_editar;
  const canEdit=()=>writable()&&state.current?.tipo==='digital'&&state.current?.status==='rascunho';
@@ -60,9 +61,11 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
   '<aside><section class="panel panel-body"><h3>Curso e participantes</h3>'+fields(draft,!edit,a.categoria)+'<p class="section-note">Nomes e curso pertencem a esta ata; não alteram Pessoas e Ofertas.</p></section>'+
   '<section class="panel panel-body" id="assinaturas-painel"><h3>Assinatura</h3><p>'+esc(a.tipo==='historica'?'PDF histórico final assinado':a.status_assinatura==='assinada'?'Assinada':a.status==='rascunho'?'Não iniciada':'Aguardando PDF assinado')+'</p><p class="revision">Revisão '+a.revisao+'. Histórico preservado.</p></section>'+
   '</aside></div></form>';
+  if(canUseStandardText(a,writable()))textHighlight=installStandardMarkerHighlight(document.querySelector('#atas-texto'));
   if(a.modalidade_assinatura==='codigo_email')loadSignatures(a);
  }
  function render(main){
+  textHighlight?.destroy();textHighlight=null;
   if(state.view==='editor'){editor(main);return true;}
   if(!['overview','records','historical','signatures'].includes(state.view))return false;
   const signatures=state.view==='signatures';
@@ -169,7 +172,7 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
     dialog('<h2>Substituir o texto da ata?</h2><p>O campo já possui conteúdo. Usar o texto padrão substituirá esse conteúdo na edição atual. A alteração só será gravada quando você salvar o rascunho.</p><div class="actions">'+btn('Cancelar','close')+btn('Substituir pelo texto padrão','standard-text-confirm')+'</div>');return;
    }
    const textarea=document.querySelector('#atas-editor [name=texto]');if(!textarea)return;
-   textarea.value=result.text;sync();if(action==='standard-text-confirm')close();textarea.focus();notify('Texto padrão inserido. Edite os marcadores e salve o rascunho.');return;
+   textarea.value=result.text;textarea.setSelectionRange(0,0);textarea.scrollTop=0;textHighlight?.refresh();sync();if(action==='standard-text-confirm')close();textarea.focus({preventScroll:true});notify('Texto padrão inserido. Edite os marcadores e salve o rascunho.');return;
   }
   if(action==='clear-filters'){state.filter='';state.status=[];state.ataTypes=[];state.ataCourses=[];state.ataYears=[];renderView();return;}
   if(action==='open'){draftId=null;return openRecord(el.dataset.id);}
