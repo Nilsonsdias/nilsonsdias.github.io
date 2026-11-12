@@ -1,11 +1,12 @@
+import {installCalendars} from './calendars.js?v=20261112-calendarios-1';
 import {completeAtaList} from './atas-list.js?v=20261110-consulta-2';
 import {dashboardNavigation,renderDashboards} from './dashboards.js?v=20261104-dashboards-1';
 import {ordemOf} from './ordem.js?v=20261103-multiplas-1';
 import {displayTurma} from './turma.js?v=20261103-turma-1';
 import {installAtas} from './atas-ui.js?v=20261111-marcadores-1';
 import {renderMultiFilter,readMultiFilter,installMultiFilterDismiss} from './multi-filter.js?v=20261103-filtros-1';
-import {navigationGroups} from './nead-logic.js?v=20261110-consulta-2';
-import {installNead,modules,roles} from './nead.js?v=20261111-ata-excluida-1';
+import {navigationGroups} from './nead-logic.js?v=20261112-calendarios-1';
+import {installNead,modules,roles} from './nead.js?v=20261112-calendarios-1';
 import { createClient } from './vendor/supabase.js';
 import { config } from './config.js';
 import {applicationUrl,prepareGoogleLogin,oauthCallbackError,clearOAuthErrorUrl} from './auth.js';
@@ -28,8 +29,9 @@ async function rpc(name,params){const {data,error}=await client.rpc(name,params)
 function canLeave(){return !state.dirty||window.confirm('Há alterações não salvas. Deseja sair e descartá-las?');}
 
 function renderAuth(mode='login'){
+  calendars.destroy();
   if(!config.emailPasswordEnabled)mode='login';
-  state.user=null;state.profile=null;state.permissions=null;state.current=null;state.dirty=false;state.records=[];state.alignments=[];state.summary=null;
+  state.view='painel';state.user=null;state.profile=null;state.permissions=null;state.current=null;state.dirty=false;state.records=[];state.alignments=[];state.summary=null;
   app.innerHTML=`<div class="auth-layout"><aside class="auth-story">${brand()}<div class="auth-copy"><span class="eyebrow">NÚCLEO DE EDUCAÇÃO A DISTÂNCIA</span><h1>A gestão do NEAD,<br>em um só lugar.</h1><p>Ofertas, pessoas, produção, processos, reuniões e atas em uma única aplicação.</p><div class="story-points"><div>${icons.check} Uma ata para cada reunião compartilhada</div><div>${icons.check} Redação, revisão e acompanhamento</div><div>${icons.check} Histórico institucional preservado</div></div></div><div class="auth-foot"><span class="dot"></span> UNIVEL · Gestão acadêmica</div></aside><main class="auth-main" id="main"><section class="auth-card" aria-labelledby="auth-title"><span class="tag">Portal institucional</span><h2 id="auth-title" style="margin-top:24px">${mode==='signup'?'Crie seu acesso':'Bem-vindo de volta'}</h2><p class="subtitle">${mode==='signup'?'Confirme seu e-mail para solicitar acesso à Gestão NEAD.':'Entre com sua conta para acessar os módulos autorizados do NEAD.'}</p><button type="button" class="button secondary full google-login" data-action="auth-google"><span class="google-letter" aria-hidden="true">G</span> Entrar com Google</button><p class="google-note">Use o e-mail que já possui acesso autorizado pelo NEAD.</p>${config.emailPasswordEnabled?`<div class="auth-divider"><span>ou use e-mail e senha</span></div><div class="auth-tabs" aria-label="Tipo de acesso"><button data-action="auth-login" class="${mode==='login'?'active':''}" ${mode==='login'?'aria-current="page"':''}>Entrar</button><button data-action="auth-signup" class="${mode==='signup'?'active':''}" ${mode==='signup'?'aria-current="page"':''}>Criar acesso</button></div><form id="auth-form" data-mode="${mode}"><label class="field">E-mail institucional<input name="email" type="email" required autocomplete="email" placeholder="nome@univel.br" spellcheck="false"></label><label class="field">${mode==='signup'?'Crie uma senha':'Senha'}<div class="password-wrap"><input name="password" type="password" required ${mode==='signup'?'minlength="12"':''} autocomplete="${mode==='signup'?'new-password':'current-password'}" placeholder="${mode==='signup'?'Pelo menos 12 caracteres':'Digite sua senha'}"><button type="button" data-action="show-password" aria-label="Mostrar senha">${icons.eye}</button></div></label>${mode==='signup'?'<label class="field">Confirme a senha<input name="passwordConfirm" type="password" required minlength="12" autocomplete="new-password" placeholder="Repita a senha"></label>':''}<div id="auth-message" role="status" class="form-message" hidden></div><button class="button primary full" type="submit">${mode==='signup'?'Criar acesso e confirmar e-mail':'Entrar na Gestão NEAD'} ${icons.arrow}</button></form>`:'<div id="auth-message" role="status" class="form-message" hidden></div>'}<p class="auth-note">${icons.lock} Acesso restrito à equipe autorizada.<br>${!config.emailPasswordEnabled?'O acesso deve ser previamente autorizado pela administração do NEAD.':mode==='signup'?'O cadastro não libera o acervo automaticamente. A equipe NEAD precisa autorizar sua conta.':'Se este é seu primeiro acesso, escolha “Criar acesso” e confirme seu e-mail.'}</p></section></main></div>`;
 }
 function renderGate(message){
@@ -49,7 +51,9 @@ const empty=(title,description,action='',label='')=>`<div class="empty"><div cla
 function recordsTable(records){return records.length?`<div class="table-scroll"><table><thead><tr><th>Número</th><th>Disciplina / cursos</th><th>Data</th><th>Situação</th><th><span class="sr-only">Ação</span></th></tr></thead><tbody>${records.map(a=>`<tr><td class="number">${numberLabel(a.numero)}</td><td><strong>${esc(a.disciplina)}</strong><div class="table-sub">${esc((a.contexto?.ofertas||[]).map(o=>o.curso).join(' · ')||'Acervo histórico')}</div></td><td>${formatDate(a.data_ata)}</td><td>${badge(a.status)}</td><td><button class="row-open" data-action="open" data-id="${esc(a.id)}">Abrir ${icons.arrow}</button></td></tr>`).join('')}</tbody></table></div>`:empty('Nenhuma ata registrada','As atas aparecerão aqui após a vinculação dos alinhamentos.','nav-alignments','Ver alinhamentos');}
 function renderView(){
   if(state.view==='grade')state.view='processos';
-  shell();const main=document.querySelector('#main');
+  calendars.destroy();shell();const main=document.querySelector('#main');
+  if(state.view==='calendario'){calendars.mount(main,true);return;}
+  if(state.view==='painel'&&nead.permission('painel')==='negado'){main.innerHTML='<div class="page-heading"><div><h1>Painel gerencial</h1><p>Calendários</p></div></div>';mountPanelCalendars(main);return;}
   if(state.view==='dashboards'){renderDashboards(main,state);return;}
   if(modules[state.view]){nead.load(state.view,state.view!==state.lastNeadView);state.lastNeadView=state.view;return;}
 
@@ -82,7 +86,7 @@ async function bootIdentity(){
     const {data,error}=await client.auth.getUser();
     if(error||!data.user){if(currentEpoch===epoch)renderAuth();return;}
     state.user=data.user;
-    try{const profile=await rpc('nead_meu_acesso');if(currentEpoch!==epoch)return;state.profile=profile;if(!profile.autorizado){renderGate(profile.mensagem);return;}state.permissions=await rpc('nead_permissoes');state.profile.pode_editar=state.permissions.atas==='escrita';if(modules[state.view]&&nead.permission(state.view)==='negado')state.view=Object.keys(modules).find(v=>nead.permission(v)!=='negado')||'overview';await loadData();}
+    try{const profile=await rpc('nead_meu_acesso');if(currentEpoch!==epoch)return;state.profile=profile;if(!profile.autorizado){renderGate(profile.mensagem);return;}state.permissions=await rpc('nead_permissoes');state.profile.pode_editar=state.permissions.atas==='escrita';if(state.view!=='painel'&&modules[state.view]&&nead.permission(state.view)==='negado')state.view=Object.keys(modules).find(v=>nead.permission(v)!=='negado')||'overview';await loadData();}
     catch(error){if(currentEpoch===epoch)renderGate(errorMessage(error));}
   })();
   try{return await bootPromise;}finally{bootPromise=null;}
@@ -178,7 +182,12 @@ document.querySelector('#confirm-check').addEventListener('change',e=>document.q
 document.querySelector('#confirm-dialog').addEventListener('close',e=>{if(e.target.returnValue==='confirm')saveRecord(true);});
 window.addEventListener('beforeunload',e=>{if(state.dirty){e.preventDefault();e.returnValue='';}});
 client.auth.onAuthStateChange((event)=>{queueMicrotask(()=>{if(event==='SIGNED_OUT'&&state.user){++epoch;renderAuth();}if(event==='SIGNED_IN'&&!state.user)bootIdentity();});});
-const nead=installNead({state,rpc,renderView,notify,openRecord,refreshAccess:bootIdentity,invokeGoogle:async body=>{const {data,error}=await client.functions.invoke('nead-integracoes',{body});if(error){let message='Integração não confirmada. Confira a Central de agendamentos.';try{message=(await error.context.json()).error||message;}catch{}throw Error(message);}return data;},createAta:async id=>{const record=await rpc('nead_obter_ou_criar_ata',{p_reuniao:id});state.current=record;state.text=record.texto||'';state.dirty=false;state.view='editor';renderView();}});
+const calendars=installCalendars({state,rpc,client,notify});
+function mountPanelCalendars(main){if(state.permissions?.calendario==='negado')return;const slot=document.createElement('div');slot.id='panel-calendars';main.querySelector('.page-heading').after(slot);calendars.mount(slot);}
+const nead=installNead({onPainel:mountPanelCalendars,state,rpc,renderView,notify,openRecord,refreshAccess:bootIdentity,invokeGoogle:async body=>{const {data,error}=await client.functions.invoke('nead-integracoes',{body});if(error){let message='Integração não confirmada. Confira a Central de agendamentos.';try{message=(await error.context.json()).error||message;}catch{}throw Error(message);}return data;},createAta:async id=>{const record=await rpc('nead_obter_ou_criar_ata',{p_reuniao:id});state.current=record;state.text=record.texto||'';state.dirty=false;state.view='editor';renderView();}});
 const atas=installAtas({app,state,rpc,client,notify,renderView,loadData,openRecord});
 await bootIdentity();
 if(loginCallbackMessage){history.replaceState(null,'',clearOAuthErrorUrl(window.location.href));if(!state.user)authMessage(loginCallbackMessage,true);}
+
+const calendarCallback=new URL(window.location.href);
+if(calendarCallback.searchParams.has('calendario_google')){notify(calendarCallback.searchParams.get('calendario_google')==='conectado'?'Agenda pessoal conectada.':'A autorização da agenda pessoal não foi concluída. Confira a conta e tente reconectar.',calendarCallback.searchParams.get('calendario_google')!=='conectado');calendarCallback.searchParams.delete('calendario_google');history.replaceState(null,'',calendarCallback.href);}

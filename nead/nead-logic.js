@@ -60,9 +60,9 @@ export function mapImport(rows,type){
 }
 
 export function navigationGroups(permission){
- const operations=[['painel','Painel gerencial'],['processos','Gestão dos Processos'],['agenda','Central de agendamentos'],['ofertas','Ofertas'],['pessoas','Pessoas'],['alocacao','Alocação']].filter(([v])=>permission(v)!=='negado');
+ const operations=[['painel','Painel gerencial'],['processos','Gestão dos Processos'],['agenda','Central de agendamentos'],['ofertas','Ofertas'],['pessoas','Pessoas'],['alocacao','Alocação']].filter(([v])=>(v==='painel'||permission(v)!=='negado'));
  const records=permission('atas')==='negado'?[]:[['overview','Visão geral'],['alignments','Alinhamentos e nova ata'],['records','Atas registradas'],['signatures','Assinaturas']];
- return [{id:'rotinas',label:'Processos e Rotinas',items:operations},{id:'atas',label:'Gestão de Atas',items:records},{id:'administracao',label:'Administração',items:[['usuarios','Usuários e acessos'],['auditoria','Auditoria']].filter(([v])=>permission(v)!=='negado')}].filter(g=>g.items.length);
+ return [{id:'rotinas',label:'Processos e Rotinas',items:operations},{id:'atas',label:'Gestão de Atas',items:records},{id:'administracao',label:'Administração',items:[['calendario','Gestão do Calendário NEAD'],['usuarios','Usuários e acessos'],['auditoria','Auditoria']].filter(([v])=>(v==='calendario'?permission(v)==='escrita':permission(v)!=='negado'))}].filter(g=>g.items.length);
 }
 
 // Comunicações substituídas pertencem ao histórico e não são pendências atuais.

@@ -5,7 +5,7 @@ import {selectionValues} from './filter-selection.js';
 import {readWorkbook} from './workbook.js';
 import {filterRows,mediatorIds,emailStatus,nextAction,mapImport,agendaState} from './nead-logic.js?v=20261103-multiplas-1';
 import {escapeHtml as esc,formatDate,normalize} from './model.js?v=20261027-filtros-2';
-export const modules={painel:'Painel gerencial',ofertas:'Ofertas',pessoas:'Pessoas',alocacao:'Alocação',processos:'Gestão dos Processos',agenda:'Central de agendamentos',importacoes:'Importações',usuarios:'Usuários e acessos',auditoria:'Auditoria'};
+export const modules={painel:'Painel gerencial',ofertas:'Ofertas',pessoas:'Pessoas',alocacao:'Alocação',processos:'Gestão dos Processos',agenda:'Central de agendamentos',importacoes:'Importações',usuarios:'Usuários e acessos',auditoria:'Auditoria',calendario:'Gestão do Calendário NEAD'};
 export const stages={producao:'Produção',conferencia:'Conferência',alinhamento:'Alinhamento',revisao:'Revisão',integracao:'Integração de notas'};
 export const roles={administrador:'Administrador',operador:'Operador',consulta:'Consulta',mediador_pedagogico:'Mediador Pedagógico',producao:'Produção'};
 const statuses={producao:['pendente','concluida'],conferencia:['pendente','em_conferencia','concluida'],alinhamento:['pendente','agendado','realizado','cancelado'],revisao:['nao_agendada','agendada','em_preparacao','realizada','concluida'],integracao:['pendente','em_andamento','concluida']};
@@ -45,7 +45,7 @@ export function renderProcessGrid(rows,{stage='',draft=p=>p,people={},canWrite=(
 }
 
 export function userAccessStatus(r){if(!r.usuario_id)return r.ativo?'Pré-cadastrado · aguardando primeiro login':'Pré-cadastro suspenso';if(!r.email_confirmed_at)return r.pre_cadastro_id?(r.ativo?'Pré-cadastrado · e-mail não confirmado':'Pré-cadastro suspenso'):'E-mail não confirmado';return r.ativo?'Ativo':'Sem acesso';}
-export function installNead({state,rpc,renderView,notify,openRecord,createAta,invokeGoogle,refreshAccess}){
+export function installNead({state,rpc,renderView,notify,openRecord,createAta,invokeGoogle,refreshAccess,onPainel}){
  const ns={rows:[],people:[],view:null,page:0,search:'',filters:{},editing:null,importRows:[],preview:null,loading:0,drafts:new Map(),processMode:'resumo'};
  const permission=m=>state.permissions?.[m==='grade'?'processos':m]||'negado';
  const write=m=>permission(m)==='escrita';
@@ -125,7 +125,7 @@ export function installNead({state,rpc,renderView,notify,openRecord,createAta,in
   if(view==='usuarios')body=heading('Usuários e acessos','Cadastre o e-mail antes do primeiro login e defina perfil e permissões.',write('usuarios')?'<button class="button primary" data-nead="new-user">Pré-cadastrar usuário</button>':'')+'<section class="panel"><div id="nead-results"></div>'+footer()+'</section>';
   if(view==='auditoria')body=heading('Auditoria operacional','Alterações por campo, com identificação do operador autenticado.')+'<section class="panel"><div id="nead-results"></div>'+footer()+'</section>';
   if(view==='importacoes')body=heading('Importações','Pré-valide o arquivo antes de confirmar a gravação. Até 500 linhas por lote.')+`<section class="panel panel-body"><form id="import-form" class="form-grid">${select('tipo','Base a importar',{pessoas:'Pessoas',ofertas:'Ofertas'},'pessoas')}<label class="field">Arquivo CSV, TSV ou XLSX<input name="arquivo" type="file" accept=".csv,.tsv,.txt,.xlsx" required></label><label class="field" id="import-sheet-label" hidden>Aba do XLSX<select id="import-sheet"></select></label><button class="button secondary" type="submit">Pré-validar arquivo</button></form><p class="section-note">Pessoas: CPF, NOME_COMPLETO, TELEFONE, EMAIL, STATUS. Ofertas: ID_OFERTA (opcional), CURSO, TURMA, MATRIZ, ORDEM_DISCIPLINA, DISCIPLINA e datas acadêmicas. Selecione a aba ao usar XLSX ou exporte como CSV. Os cabeçalhos originais são reconhecidos.</p><div id="import-preview"></div></section>`;
-  main.innerHTML=body;updateResults();
+  main.innerHTML=body;updateResults();if(view==='painel')onPainel?.(main);
  }
  function updateResults(){
   const box=document.querySelector('#nead-results');if(!box)return;const allRows=filtered(),view=ns.view,rows=view==='painel'?allRows:allViews.includes(view)?allRows.slice(ns.page*500,(ns.page+1)*500):allRows;
