@@ -1,4 +1,4 @@
-import {installCalendars} from './calendars.js?v=20261112-calendarios-1';
+import {installCalendars} from './calendars.js?v=20261112-calendarios-2';
 import {completeAtaList} from './atas-list.js?v=20261110-consulta-2';
 import {dashboardNavigation,renderDashboards} from './dashboards.js?v=20261104-dashboards-1';
 import {ordemOf} from './ordem.js?v=20261103-multiplas-1';
