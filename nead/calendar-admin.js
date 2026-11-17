@@ -1,0 +1,18 @@
+import {escapeHtml as esc} from './model.js';
+import {activityPending,formatDay} from './calendar-model.js?v=20261117-calendarios-1';
+
+export function renderActivityList(activities,groups){
+ const options=groups.map(g=>`<option value="${g.id}">${esc(g.nome)}</option>`).join('');
+ return `<section class="panel panel-body"><div class="actions"><span id="calendar-selected" role="status">0 atividades selecionadas</span><label class="field">Grupo para as selecionadas<select id="calendar-bulk-group"><option value="">Sem grupo</option>${options}</select></label><button class="button primary" data-cal="bulk-group" disabled>Atribuir grupo às selecionadas</button></div><p>Selecione até 500 atividades. Registros sem ambas as datas permanecem nesta lista para edição e não aparecem no calendário.</p><div class="table-scroll"><table><thead><tr><th><input type="checkbox" data-cal-select="all" aria-label="Selecionar/desmarcar todas as atividades (até 500)"></th><th>Título</th><th>Grupo</th><th>Período</th><th>Pendências</th><th>Recorrência</th><th>Ação</th></tr></thead><tbody>${activities.map(a=>`<tr><td><input type="checkbox" data-cal-select="${a.id}" aria-label="Selecionar ${esc(a.titulo)}"></td><td>${esc(a.titulo)}</td><td>${esc(groups.find(g=>g.id===a.grupo_id)?.nome||'Sem grupo')}</td><td>${a.data_inicio?formatDay(a.data_inicio):'Não informado'} – ${a.data_fim?formatDay(a.data_fim):'Não informado'}</td><td>${esc(activityPending(a).join(' · ')||'Completa')}</td><td>${esc(a.recorrencia||'Não repete')}</td><td><button class="row-open" data-cal="edit" data-id="${a.id}">Editar</button></td></tr>`).join('')||'<tr><td colspan="7">Nenhum registro.</td></tr>'}</tbody></table></div></section>`;
+}
+
+export function syncActivitySelection(root,activities,selected){
+ for(const box of root.querySelectorAll('[data-cal-select]')){
+  if(box.dataset.calSelect==='all'){
+   const ids=activities.slice(0,500).map(a=>a.id);
+   box.checked=ids.length>0&&ids.every(id=>selected.has(id));box.indeterminate=selected.size>0&&!box.checked;
+  }else box.checked=selected.has(box.dataset.calSelect);
+ }
+ root.querySelector('#calendar-selected').textContent=selected.size+' atividades selecionadas';
+ root.querySelector('[data-cal="bulk-group"]').disabled=!selected.size;
+}

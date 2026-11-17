@@ -1,5 +1,5 @@
 import {escapeHtml as esc} from './model.js';
-import {addDays,date,period,today,weekBars,timedLayout,onDay,formatDay} from './calendar-model.js';
+import {addDays,date,period,today,weekBars,timedLayout,onDay,formatDay} from './calendar-model.js?v=20261117-calendarios-1';
 const weekdays=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 const safeColor=c=>/^#[a-f0-9]{6}$/i.test(c||'')?c:'#176b93';
 const ink=c=>{const rgb=[1,3,5].map(i=>parseInt(c.slice(i,i+2),16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722>.179?'#101820':'#ffffff';};
