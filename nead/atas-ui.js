@@ -1,8 +1,9 @@
+import {historicalReservationText} from './atas-reservas.js?v=20261123-reserva-1';
 import {installStandardMarkerHighlight} from './ata-text-highlight.js?v=20261111-marcadores-1';
 import {ataType,ataFilterChoices,filterAtaList} from './atas-list.js?v=20261110-consulta-2';
 import {ordemOf} from './ordem.js?v=20261103-multiplas-1';
 import {canUseStandardText,standardTextDecision} from './ata-standard-text.js?v=20261030-padrao-1';
-import {createHistoricalBatch} from './atas-batch.js?v=20261104-complemento-1';
+import {createHistoricalBatch} from './atas-batch.js?v=20261123-reserva-1';
 import {guardAtaSession} from './ata-session.js';
 import {renderMultiFilter,readMultiFilter} from './multi-filter.js?v=20261103-filtros-1';
 import {escapeHtml as esc,formatDate} from './model.js?v=20261027-atas-4';
@@ -35,7 +36,7 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
  const batch=createHistoricalBatch({app,state,rpc,archive,notify,onImported:()=>loadData()});
  function carga(){
   const c=state.carga;if(!c)return '';
-  const reservas=(c.reservas||[]).map(r=>esc(r.ano)+': números '+esc(r.inicio)+' a '+esc(r.fim)+' reservados para atas históricas; novas atas a partir de '+esc(Number(r.fim)+1)+'.').join(' ');
+  const reservas=esc(historicalReservationText(c));
   return '<div class="notice"><div><strong>Numeração anual liberada</strong><p>'+reservas+' A importação histórica pode ser feita a qualquer tempo. Nos demais anos, a sequência inicia em 1.</p></div></div>';
  }
  function table(records){
@@ -122,7 +123,7 @@ export function installAtas({app,state,rpc,client,notify,renderView,loadData,ope
  }
  function newForm(historical){
   const id=historical?'atas-import':'atas-new';
-  const d=dialog('<h2>'+(historical?'Importar ata histórica':'Nova ata avulsa')+'</h2><p>'+(historical?'O ano será obtido da data do documento. Em 2026, use o número original de 1 a 170. Para números repetidos no histórico, use um complemento, como 2.1.':'O número será atribuído automaticamente na sequência do ano informado.')+'</p><form id="'+id+'" class="form-grid">'+
+  const d=dialog('<h2>'+(historical?'Importar ata histórica':'Nova ata avulsa')+'</h2><p>'+(historical?'O ano será obtido da data do documento. '+esc(historicalReservationText(state.carga))+' Use o número original. Para números repetidos no histórico, use um complemento, como 2.1.':'O número será atribuído automaticamente na sequência do ano informado.')+'</p><form id="'+id+'" class="form-grid">'+
    '<label class="field">Categoria<select name="categoria"><option value="administrativa" '+(!historical?'selected':'')+'>Administrativa</option><option value="alinhamento" '+(historical?'selected':'')+'>Alinhamento</option></select></label>'+
    '<label class="field">Título da reunião<input name="titulo" maxlength="300" placeholder="Ex.: Reunião de Formação de Docentes"></label>'+
    (historical?'<label class="field">Número da ata<input name="numero" type="text" inputmode="decimal" pattern="[0-9]+([.][0-9]+)?" maxlength="25" placeholder="2 ou 2.1" required></label>':'')+
